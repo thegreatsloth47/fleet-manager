@@ -2,8 +2,8 @@
 
 Minimal Next.js application scaffold using TypeScript, App Router, `src/`,
 ESLint, and the `@/*` import alias. The home page links to authentication and
-organizations. Supabase provides authentication and organization access; no fleet product
-features are implemented.
+organizations. Supabase provides authentication, organization access, and
+organization-scoped vehicle management.
 
 ## Development
 
@@ -140,8 +140,8 @@ explicit authorization.
 
 App Router files contain presentation only. Future domain rules, tenant
 authorization, and infrastructure follow the blueprint's boundaries rather
-than being placed in React components. This backend increment adds only
-authentication, organizations, and memberships. Offline sync and other feature
+than being placed in React components. The backend includes authentication, organizations, memberships, and the initial
+Asset/Vehicle domain. Offline sync and other feature
 modules remain outside scope.
 
 The smoke test only verifies the test setup and existing page rendering.
@@ -151,8 +151,8 @@ tests with the relevant features.
 ## Supabase backend
 
 The integration follows blueprint sections 12–14 and 16: managed identity,
-server-side tenant checks, and database RLS. Only `organizations` and
-`memberships` are application tables. Memberships reference `auth.users.id`
+server-side tenant checks, and database RLS. Application tables include `organizations`, `memberships`, `assets`, and
+`vehicle_profiles`. Memberships reference `auth.users.id`
 directly; there is no separate users/profile table or custom identity system.
 The cookie setup follows the [Supabase Next.js SSR guide](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs).
 
@@ -257,8 +257,8 @@ Responses are private and non-cacheable. The proxy refreshes cookies on `/auth`,
   creation timestamp, and an index for active membership lookups by user.
 
 Roles are `owner`, `admin`, `driver`, and `read_only`, corresponding to the
-blueprint's initial role families. Membership management and role-specific
-editing permissions remain deferred. Archived
+blueprint's initial role families. Membership management remains deferred; vehicle access follows the role policy
+documented below. Archived
 organizations remain readable to their active members, preserving historical
 access. Timezone is stored as nonblank text; scheduling and IANA timezone
 validation are deferred until timezone-dependent behavior exists.
@@ -318,7 +318,7 @@ For future changes, create a migration with `npx supabase migration new NAME`.
 Use `npm run db:reset` only on disposable **local** data: it erases local records
 and reapplies migrations. `npm run db:types` prints generated TypeScript types;
 after a successful generation, replace `src/lib/supabase/database.types.ts` with
-the output. The checked-in types mirror both migrations. Review migrations
+the output. The checked-in types mirror the committed migrations. Review migrations
 and run the database suite before `supabase db push` against a hosted project.
 
 ### Application files and dependencies
@@ -341,3 +341,80 @@ Runtime dependencies: `@supabase/supabase-js` (typed Auth/Data API SDK),
 `@supabase/ssr` (cookie-based Next.js sessions), and `server-only` (prevents server
 adapters from being imported into browser code). Development dependency:
 `supabase` (pinned CLI for local services, migrations, types, and pgTAP).
+
+## Initial Asset and Vehicle domain
+
+The approved domain decisions are implemented in
+`supabase/migrations/20260922000000_assets_and_vehicles.sql`:
+
+- `assets` owns organization scope, display name/number, operational status,
+  make/model/year, description, timestamps, and `archived_at`.
+- `vehicle_profiles` owns VIN, license plate, and jurisdiction. A composite
+  foreign key enforces the same organization and vehicle subtype as its asset.
+  Future equipment can add a subtype and profile in a later migration; no
+  equipment workflows or tables are implemented now.
+- Only display name/number is required. Names are trimmed and use exact,
+  case-sensitive uniqueness within an organization while non-archived. Archived
+  names may be reused. VINs are trimmed and uppercased, with organization-level
+  uniqueness including archived records; multiple null VINs are allowed. There
+  is no VIN format/check-digit requirement or globally unique plate constraint.
+- Status is `active` or `out_of_service`. Archiving preserves both records and
+  operational status. Archived vehicles remain readable but cannot be edited or
+  restored. Repeating an archive is safe and preserves the first archive time.
+- Owner/admin members may create, read, edit, and archive. Read-only members may
+  read, including archives. Drivers, revoked members, outsiders, and anonymous
+  callers have no vehicle-management access. Existing organization membership
+  visibility and creation behavior are unchanged.
+
+`src/modules/assets/` owns validation, authorization, commands and queries;
+React components handle presentation and interaction. Reads verify the Auth user
+and current membership before querying with explicit organization scope. RLS
+independently restricts both tables. Authenticated users receive SELECT only;
+there are no direct-write RLS policies. Narrow `SECURITY DEFINER` functions
+revalidate current owner/admin membership, use an empty search path and explicit
+tenant predicates, and commit asset/profile writes atomically. Edits and archive
+serialize on the asset row so an archived vehicle cannot be edited. No service
+role credential is used for application requests.
+
+Open **Organizations → Vehicles** to list current vehicles, add one, open its
+identification details, edit it, or archive it. **View archived vehicles** opens
+historical records. The pages and API live under existing session-refresh paths:
+
+- `GET/POST /api/organizations/:organizationId/vehicles` lists/creates vehicles.
+  `?archived=true` selects the archived list.
+- `GET/PUT /api/organizations/:organizationId/vehicles/:assetId` reads/replaces
+  vehicle details. PUT accepts the complete editable form; omitted optional
+  fields are cleared.
+- `POST /api/organizations/:organizationId/vehicles/:assetId/archive` archives
+  with an empty JSON object `{}`.
+
+Mutations require same-origin JSON requests and use existing session cookies.
+Responses are private and non-cacheable. Admin workflows are online-first;
+network failures remain visible and prompt checking the list before resubmission.
+No meters, maintenance, issues, expenses, or driver assignments are added.
+
+### Apply and verify
+
+No new Auth settings, environment variables, service keys, or manual table/RLS
+configuration are required. Apply the migration through the CLI to the intended
+Supabase project after reviewing and testing it; do not manually edit its schema.
+For an already-running local Supabase instance, apply pending migrations with
+`npx supabase migration up --local`. For a fresh local instance, use
+`npm run db:start`. With Docker/Supabase running, run `npm run test:db`.
+For a hosted project, verify its project reference, then run `npx supabase db push`.
+Hosted migrations have not been applied by this implementation task.
+
+`supabase/tests/vehicles.test.sql` exercises actual database roles/RLS, both
+asset and profile visibility, cross-tenant writes, all membership roles,
+revocation with unchanged JWT claims, atomic rollback, uniqueness, archive
+immutability, tenant foreign keys, and direct-write denial even after temporarily
+granting table writes. Fixtures roll back. The existing Docker-backed CI job
+runs this suite automatically. Vitest covers input validation, application
+membership checks, scoped queries/commands, HTTP origin checks and errors, and
+server-rendered management/read-only/archive/empty states.
+
+Manual review: after applying the migration, sign in as an owner and create,
+view, edit, and archive a vehicle; check the archived list, name reuse, duplicate
+VIN rejection, and optional-field clearing. Repeat view/write attempts with
+read-only, driver, and other-organization accounts. The automated rendering
+tests do not exercise browser form submission against a live Supabase instance.

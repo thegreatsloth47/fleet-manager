@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessibleOrganizations } from "@/modules/organizations/queries";
+import { canViewVehicles } from "@/modules/assets/vehicle";
 import CreateOrganizationForm from "./create-form";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,18 @@ export default async function OrganizationsPage() {
       ) : organizations?.length ? (
         <ul>
           {organizations.map((organization) => (
-            <li key={organization.id}>{organization.name}</li>
+            <li key={organization.id}>
+              {organization.name}
+              {canViewVehicles(organization.role) && (
+                <>
+                  {" "}
+                  —{" "}
+                  <a href={`/organizations/${organization.id}/vehicles`}>
+                    Vehicles
+                  </a>
+                </>
+              )}
+            </li>
           ))}
         </ul>
       ) : (

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useActionState } from "react";
 import { authenticate, signOut } from "@/modules/auth/actions";
 
@@ -40,7 +42,7 @@ export default function AuthPage() {
         <button disabled={pending || signingOut}>Sign out</button>
       </form>
       <p role="status">{signOutState.error}</p>
-      <a href="/organizations">Your organizations</a>
+      <Link href="/organizations">Your organizations</Link>
     </main>
   );
 }

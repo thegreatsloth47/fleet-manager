@@ -15,7 +15,7 @@ export async function getAccessibleOrganizations(organizationId?: string) {
   // Resolve scope from current database membership, never client or JWT metadata.
   const { data: memberships, error: membershipError } = await supabase
     .from("memberships")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("user_id", user.id)
     .eq("status", "active");
 
@@ -45,5 +45,15 @@ export async function getAccessibleOrganizations(organizationId?: string) {
   if (organizationId && data.length === 0) {
     return { status: 404, body: { error: "Organization not found." } };
   }
-  return { status: 200, body: { organizations: data } };
+  return {
+    status: 200,
+    body: {
+      organizations: data.map((organization) => ({
+        ...organization,
+        role: memberships.find(
+          (membership) => membership.organization_id === organization.id,
+        )?.role,
+      })),
+    },
+  };
 }

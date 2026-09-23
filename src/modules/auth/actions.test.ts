@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
@@ -26,6 +26,41 @@ beforeEach(() => {
     throw new Error(`REDIRECT:${path}`);
   });
 });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
+test.each(["development", "production"])(
+  "signup diagnostics in %s keep provider details out of the response",
+  async (environment) => {
+    vi.stubEnv("NODE_ENV", environment);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.signUp.mockResolvedValue({
+      data: { session: null },
+      error: {
+        code: "weak_password",
+        message: "Password policy details from Supabase",
+        details: "Additional provider data must not be logged",
+      },
+    });
+
+    expect(await authenticate({}, credentials("sign-up"))).toEqual({
+      error:
+        "Unable to sign up. Check the password requirements and try again.",
+    });
+    if (environment === "development") {
+      expect(log).toHaveBeenCalledExactlyOnceWith("Supabase signup failed", {
+        code: "weak_password",
+        message: "Password policy details from Supabase",
+      });
+    } else {
+      expect(log).not.toHaveBeenCalled();
+    }
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  },
+);
 
 test("signup awaits email confirmation without claiming a session", async () => {
   mocks.signUp.mockResolvedValue({ data: { session: null }, error: null });

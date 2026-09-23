@@ -31,6 +31,12 @@ export async function authenticate(
         ? await supabase.auth.signUp(credentials)
         : await supabase.auth.signInWithPassword(credentials);
     if (error) {
+      if (intent === "sign-up" && process.env.NODE_ENV === "development") {
+        console.error("Supabase signup failed", {
+          code: error.code,
+          message: error.message,
+        });
+      }
       return {
         error:
           intent === "sign-up"

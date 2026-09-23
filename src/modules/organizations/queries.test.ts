@@ -35,7 +35,7 @@ beforeEach(() => {
   mocks.membershipEq
     .mockReturnValueOnce({ eq: mocks.membershipEq })
     .mockResolvedValueOnce({
-      data: [{ organization_id: "organization-a" }],
+      data: [{ organization_id: "organization-a", role: "owner" }],
       error: null,
     });
   mocks.organizationSelect.mockReturnValue({ in: mocks.organizationIn });
@@ -57,7 +57,7 @@ test("requires a server-verified Auth user before any tenant query", async () =>
 
 test("scopes queries using the verified user's active database memberships", async () => {
   expect((await getAccessibleOrganizations()).body).toEqual({
-    organizations: [{ id: "organization-a", name: "A" }],
+    organizations: [{ id: "organization-a", name: "A", role: "owner" }],
   });
   expect(mocks.membershipEq).toHaveBeenNthCalledWith(1, "user_id", "user-a");
   expect(mocks.membershipEq).toHaveBeenNthCalledWith(2, "status", "active");
