@@ -1,0 +1,90 @@
+name: Hosted E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_ref:
+        description: "Confirm the dedicated E2E Supabase project ref (never the existing development project)"
+        required: true
+        type: string
+      confirm_fixture_cleanup:
+        description: "I confirm this isolated project permits creating and deleting suite-owned test fixtures"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fleetfalcon-hosted-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    if: >-
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+      && inputs.confirm_fixture_cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: fleetfalcon-e2e
+    env:
+      E2E_TARGET_ENVIRONMENT: ${{ vars.E2E_TARGET_ENVIRONMENT }}
+      E2E_SUPABASE_PROJECT_REF: ${{ vars.E2E_SUPABASE_PROJECT_REF }}
+      E2E_SUPABASE_URL: ${{ vars.E2E_SUPABASE_URL }}
+      E2E_PROTECTED_PROJECT_REFS: ${{ vars.E2E_PROTECTED_PROJECT_REFS }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Confirm isolated target before accessing fixture credentials
+        env:
+          CONFIRMED_PROJECT_REF: ${{ inputs.project_ref }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          node --input-type=module <<'JS'
+          import { validateTarget } from './e2e/environment.mjs';
+          import { appendFileSync } from 'node:fs';
+          import { randomUUID } from 'node:crypto';
+          const target = validateTarget(process.env);
+          if (process.env.CONFIRMED_PROJECT_REF !== target.project) {
+            throw new Error('Typed confirmation does not match the protected environment target.');
+          }
+          appendFileSync(process.env.GITHUB_ENV, `E2E_RUN_ID=${randomUUID()}\n`);
+          console.log(`Confirmed isolated E2E project: ${target.project}`);
+          JS
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium and Linux system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Verify hosted identity and migrations without fixture writes
+        env:
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_ADMIN_KEY: ${{ secrets.E2E_SUPABASE_ADMIN_KEY }}
+        run: npm run test:e2e -- --preflight
+      - name: Run real browser regressions
+        id: run
+        env:
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_ADMIN_KEY: ${{ secrets.E2E_SUPABASE_ADMIN_KEY }}
+        run: npm run test:e2e
+      - name: Recover any interrupted fixture teardown
+        if: ${{ always() && steps.run.outcome != 'skipped' && steps.run.outcome != '' }}
+        env:
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_ADMIN_KEY: ${{ secrets.E2E_SUPABASE_ADMIN_KEY }}
+        run: npm run test:e2e -- --cleanup
+      - name: Retain reports and exact fixture recovery manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .e2e-runs/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

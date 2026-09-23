@@ -391,7 +391,9 @@ historical records. The pages and API live under existing session-refresh paths:
 Mutations require same-origin JSON requests and use existing session cookies.
 Responses are private and non-cacheable. Admin workflows are online-first;
 network failures remain visible and prompt checking the list before resubmission.
-No meters, maintenance, issues, expenses, or driver assignments are added.
+The Asset/Vehicle workflow remains focused on identity and status; the mileage
+workflow is documented below. Maintenance, issues, expenses, and driver
+assignments remain outside scope.
 
 ### Apply and verify
 
@@ -418,3 +420,271 @@ view, edit, and archive a vehicle; check the archived list, name reuse, duplicat
 VIN rejection, and optional-field clearing. Repeat view/write attempts with
 read-only, driver, and other-organization accounts. The automated rendering
 tests do not exercise browser form submission against a live Supabase instance.
+
+## Vehicle mileage and odometers
+
+Open a vehicle, then **Mileage and odometer history**. Owners/admins can initialize
+mileage, add readings, correct entries, void ordinary readings, and record a
+physical replacement/reset. Read-only members can review history. Drivers have
+no mileage access. Archived vehicles retain history without mutation controls.
+
+The approved initial meter contract is:
+
+- Choose miles (default) or kilometers at initialization; the unit is immutable.
+  Physical and accumulated values support exact tenths, from 0 to 999999999.9.
+- Initial accumulated usage defaults to the physical reading. A higher known
+  value requires an explanation and is explicitly a declared baseline.
+- Original entries and every revision remain immutable to application users.
+  Corrections append complete replacement values with actor, recorded time,
+  reason, and predecessor revision. Observation time and unit remain fixed.
+  Voids apply only to ordinary readings; an explicit correction can restore one.
+- Replacement events delimit physical-meter periods within the same logical
+  asset meter. At replacement, accumulated usage increases by **old final minus
+  preceding physical reading**. The new starting reading contributes zero.
+  Later readings add their difference from that new physical baseline.
+- Backdated ordinary readings must fit their chronological neighbors, including
+  replacement boundaries. Future times, duplicate observation times (including
+  voided entries), and readings before initialization are rejected. New
+  replacements must follow all existing observation times. Corrections to old
+  replacement values are supported and revalidate all affected periods.
+
+`src/modules/meters/` owns the application commands, validation, and queries.
+`meters` belongs to an Asset; `meter_entries` stores original baseline, reading,
+and replacement events; `meter_revisions` stores appended corrections/voids.
+Physical periods are represented by replacement boundaries, without creating a
+new logical meter. Meter type, unit, and source are explicit; this increment
+accepts only vehicle odometers and manual admin entry. Engine-hours and OBD can
+extend these contracts without changing the physical/logical usage distinction.
+
+`meter_history` calculates effective accumulated usage using PostgreSQL exact
+numeric arithmetic. The same calculation validates writes transactionally, so
+invalid corrections roll back completely. It runs with invoker permissions and
+RLS for reads. `record_meter_command` checks current owner/admin membership,
+locks the asset against concurrent mileage/archive commands, and revalidates the
+whole effective history. Authenticated users have SELECT-only table privileges
+and no direct-write RLS policies. Tenant foreign keys reinforce isolation.
+No history is silently rewritten, and no separate accumulated-value cache can
+drift from the effective evidence.
+
+`GET/POST /api/organizations/:organizationId/vehicles/:assetId/mileage` uses
+existing session cookies, same-origin JSON mutation checks, and private/no-store
+responses. POST accepts an explicit action and UUID command ID; identical retries
+return the prior result without applying usage again. Reusing that ID with a
+different payload is rejected. Corrections require the expected revision ID to
+reject stale edits. The UI retains the command ID for an unchanged form retry;
+this is online retry protection, not an offline queue. Decimal values cross the
+API as strings to preserve exact tenths.
+
+### Mileage migration and verification
+
+Review `supabase/migrations/20260923000000_vehicle_meters.sql` before applying it.
+No hosted Supabase changes were made. Docker is not required on developer
+machines: the existing GitHub Actions database job starts its own Supabase and
+automatically runs `supabase/tests/meters.test.sql` alongside the existing suites.
+The migration and pgTAP tests require that CI validation before hosted use.
+Database types were mirrored manually; local type generation was not run.
+
+Application validation includes `npm test`, `npm run typecheck`, `npm run lint`,
+`npm run format:check`, and `npm run build`. Unit, service, HTTP, and rendering
+tests do not substitute for real database or authenticated browser verification.
+
+After CI passes and you apply the migration to hosted development:
+
+1. Sign in as an owner/admin, open an existing vehicle, and follow **Mileage and
+   odometer history**. Initialize at 100 miles, then add a later reading of 150.
+   Confirm both physical and accumulated values show 150.
+2. Replace the odometer at a later time: old final 200, new starting 10, with a
+   reason. Confirm physical 10 and accumulated 200. Add a later reading of 30;
+   confirm accumulated 220. A second replacement with old final 50 and new
+   starting 1000 should show accumulated 240, then a reading of 1010 gives 250.
+3. Correct the first replacement's old final from 200 to 210. Confirm current
+   accumulated usage becomes 260. Expand the audit history and verify the
+   original replacement and correction remain visible with actors and reasons.
+4. Void the latest ordinary reading with a reason; confirm current values revert
+   to the last effective observation. Correct and restore it, then inspect both
+   revisions. Try an inconsistent correction and confirm the save is rejected.
+5. Add a backdated reading between existing readings in the same physical
+   period. Try a value outside its neighbors, a duplicate time, a future time,
+   and a historical replacement; each invalid submission should be rejected.
+6. Use another vehicle to initialize kilometers and a higher known accumulated
+   baseline with a reason. Confirm the chosen unit persists and cannot be edited.
+7. Repeat access checks as read-only, driver, and another organization's member.
+   Confirm read-only has no write controls, drivers/outsiders cannot load the
+   mileage page/API, and archived vehicles retain history but reject writes.
+
+Authenticated browser verification and real database execution remain unrun in
+the Docker-free local environment; neither hosted migration nor deployment is
+part of this implementation.
+
+## Browser regression suite (Playwright)
+
+`npm run test:e2e` runs the real Next.js application against a **dedicated,
+empty hosted Supabase E2E project**, with real Auth users and browser sessions.
+No authorization responses are mocked. The current Playwright release is pinned
+in `package-lock.json`; no downgrade is required for the 2017 MacBook Pro.
+Run browsers on a supported PC/Mac or on the Ubuntu GitHub Actions runner.
+The 2017 Mac can still run unit checks and `npm run test:e2e -- --list`.
+
+The existing project `kgmxzjnqowsishsiyjug` is FleetFalcon's development project,
+regardless of Supabase's default `main (production)` branch label. It contains
+existing development data and is **blocked in the E2E target validator**. A
+separate customer-facing production project does not currently exist; add any
+future production refs to `E2E_PROTECTED_PROJECT_REFS` before running the suite.
+There is no fallback to `.env.local` or to development project credentials.
+
+### One-time hosted setup (performed by the project owner)
+
+1. Create a separate hosted Supabase project, for example `fleetfalcon-e2e`,
+   with no customer or existing development data. Record its distinct project
+   ref and URL. Do not reuse the existing project's admin key.
+2. Run the existing migration/pgTAP CI checks first. Review and apply **all
+   committed migrations**, including the meter migration,
+   to this new project. Use a separate checkout for `supabase link --project-ref`
+   and `supabase db push` so the development checkout's link stays intact. These
+   hosted CLI operations need no local Docker. The browser runner never applies
+   migrations, resets a database, or changes Auth/project settings.
+3. Enable email/password authentication and email confirmation. Use the standard
+   Auth flow without CAPTCHA in this isolated test project. Accounts are created
+   via Auth Admin; confirmation tests use generated Auth links with the real
+   `/auth/confirm` handler. No SMTP/mailbox is needed for these tests.
+4. In GitHub, create the **`fleetfalcon-e2e` environment**. Restrict it to the
+   repository's default branch and configure required reviewers where supported
+   by your GitHub plan. Protect that branch and review changes to workflows and
+   fixture code before approving runs. Do not expose these credentials to
+   untrusted PRs, forks, or `pull_request_target` workflows.
+5. Configure the following **environment variables** and **environment secrets**:
+
+| Kind     | Name                           | Value                                                               |
+| -------- | ------------------------------ | ------------------------------------------------------------------- |
+| Variable | `E2E_TARGET_ENVIRONMENT`       | `isolated-e2e`                                                      |
+| Variable | `E2E_SUPABASE_PROJECT_REF`     | New dedicated E2E project ref                                       |
+| Variable | `E2E_SUPABASE_URL`             | Exactly `https://<E2E ref>.supabase.co`                             |
+| Variable | `E2E_PROTECTED_PROJECT_REFS`   | `kgmxzjnqowsishsiyjug`, plus comma-separated future production refs |
+| Secret   | `E2E_SUPABASE_PUBLISHABLE_KEY` | Dedicated E2E project's publishable key                             |
+| Secret   | `E2E_SUPABASE_ADMIN_KEY`       | Dedicated E2E project's secret key or legacy service-role key       |
+
+Environment protections are configured in GitHub, not created by the workflow.
+If your repository/plan cannot provide the required protections, resolve that
+before storing the privileged secret and enabling hosted runs. See
+[GitHub environment protections](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+
+### GitHub Actions execution
+
+After the configuration and migrations are reviewed, merge the suite onto the
+trusted default branch. Open **Actions → Hosted E2E → Run workflow**, select that
+branch, type the dedicated project ref, and confirm fixture creation/deletion.
+The workflow refuses a mismatched ref and uses a fresh Ubuntu runner. It installs
+Chromium and its Linux libraries directly; it does not install or run Docker.
+The existing pgTAP database CI job is unchanged and remains a separate check.
+
+Before fixture creation, a preflight verifies the approved URL/ref, checks admin
+access against that exact project's Auth endpoint without listing users, and
+checks that all required tables exist without retrieving business records.
+Missing migrations fail the run; the workflow never silently skips meter tests.
+Admin credentials are injected only into preflight, test, and cleanup steps,
+not dependency installation. Next.js and Chromium receive a separately
+allowlisted environment containing no fixture-admin credential.
+
+Runs are serialized (`cancel-in-progress: false`) to reduce rate-limit pressure
+and allow teardown to finish. The workflow is manual-only, not a push/PR trigger.
+Reports, failure screenshots, Next.js logs, and recovery manifests are uploaded
+with seven-day retention, even after a test failure. Traces/video are disabled to
+avoid retaining credential-bearing network traffic. Artifacts still contain
+synthetic test data and may contain short-lived test confirmation links; treat
+them as private debugging evidence.
+
+### Local execution on a compatible PC or Mac
+
+Use Node 24 and a supported Playwright host. Stop `npm run dev` in this checkout
+first: the E2E runner owns port 3210 and the checkout's Next.js development build.
+It refuses to reuse an existing server.
+
+```sh
+npm ci
+npx playwright install chromium
+```
+
+Copy `.env.e2e.example` to **`.env.e2e.local`** and fill it with the dedicated E2E
+project values above. The file is ignored by Git. Never place the admin key in
+`.env.local`, a `NEXT_PUBLIC_*` variable, an application module, or a test report.
+Then run:
+
+```sh
+npm run test:e2e -- --preflight
+npm run test:e2e
+```
+
+`npm run test:e2e -- --list` discovers tests without credentials, a browser,
+server startup, or hosted requests. Normal execution launches its own local
+Next.js server and runs Chromium with one worker and no automatic retries.
+`npm test` also includes unit tests of target blocking, process-environment
+sanitization, and recovery-manifest validation.
+
+### Fixture scope, teardown, and interrupted runs
+
+Each test gets fresh accounts, organizations, and uniquely named vehicles under
+an `ff-e2e-<run UUID>-<fixture UUID>` namespace. Test passwords remain in memory.
+The Node-only admin client is restricted to account provisioning, confirmation
+link generation, membership setup/revocation, identity checks, and cleanup.
+Organizations and vehicles are created through browser forms; meter workflows
+also use forms. Forbidden API requests and idempotent replays use the browser's
+ordinary user cookies, never the admin credential.
+
+Each fixture journals intended Auth UUIDs and organization names/owners before
+creation, then records confirmed organization IDs. The ignored
+`.e2e-runs/<run UUID>/` folder contains recovery manifests without passwords or
+admin keys. Cleanup verifies project identity, Auth metadata, exact organization
+identity, ownership, membership scope, vehicle names, and meter audit actors.
+Any unexpected identity/data stops cleanup for manual review.
+
+Before deleting, cleanup persists an exact-ID inventory. It deletes only those
+IDs with tenant predicates, in foreign-key order: revisions, entries, meters,
+profiles, assets, memberships, organizations, then the exact Auth users. It does
+not scan/delete arbitrary organizations or reset the hosted database. Teardown
+runs after both success and failure. An `always()` CI step retries incomplete
+cleanup; its separate report does not overwrite the original failure report.
+
+A killed process, runner loss, or Supabase outage can still prevent teardown.
+Retain/download the run artifact and restore its contents to
+`.e2e-runs/<original run UUID>/` in a trusted checkout. Review the manifests and
+configure the **same isolated project**, then recover only that run:
+
+```sh
+# macOS/Linux
+E2E_RUN_ID=<original-run-uuid> npm run test:e2e -- --cleanup
+```
+
+```powershell
+# Windows PowerShell
+$env:E2E_RUN_ID = "<original-run-uuid>"
+npm run test:e2e -- --cleanup
+Remove-Item Env:E2E_RUN_ID
+```
+
+Repeated cleanup is safe; missing rows from a partially completed teardown are
+accepted, while new/unrecognized IDs stop recovery. Do not delete manifests until
+cleanup is confirmed. If the runner dies before artifacts upload, use manual
+project-admin review of the test account metadata and names; there is deliberately
+no broad automatic stale-fixture deletion command.
+
+### Coverage and remaining verification
+
+The browser suite contains seven automated workflow tests plus one explicitly
+skipped delivered-email test:
+
+- Real login/logout, invalid credentials, protected pages/APIs, generated-link
+  email confirmation, fixed redirects, and rejection of reused/invalid links.
+- Organization creation, owner access, all membership roles, live-session
+  revocation, outsiders, and cross-organization IDs and role differences.
+- Vehicle creation/editing, optional-field clearing, normalized VIN/name
+  uniqueness, cross-tenant reuse, archiving, archived name reuse/VIN reservation.
+- Miles/kilometers, declared baselines, exact tenths, backdating and rejection
+  cases, corrections, void/restoration audit evidence, repeated physical
+  replacements, accumulated-usage continuity, idempotent replay, and archives.
+
+**Not yet verified against hosted Supabase:** the new browser suite, its hosted
+preflight, and fixture cleanup. The dedicated project/environment still needs
+owner setup and a first approved Actions run. Test discovery and static/unit
+checks do not establish that hosted workflows pass. The complete signup →
+delivered email → browser confirmation flow stays explicitly skipped until a
+controlled test mailbox is configured. No product behavior was changed for E2E.

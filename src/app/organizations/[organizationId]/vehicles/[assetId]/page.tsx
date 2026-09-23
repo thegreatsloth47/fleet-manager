@@ -31,6 +31,13 @@ export default async function VehiclePage({
         </Link>
       </p>
       <h1>{vehicle.name}</h1>
+      <p>
+        <Link
+          href={`/organizations/${organizationId}/vehicles/${assetId}/mileage`}
+        >
+          Mileage and odometer history
+        </Link>
+      </p>
       {vehicle.archived_at && <p>Archived — read-only</p>}
       <dl>
         <dt>Status</dt>
