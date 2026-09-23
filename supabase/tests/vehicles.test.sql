@@ -140,7 +140,9 @@ select is((select count(*) from public.vehicle_profiles where vin = 'BYPASS'), 0
 select is((select count(*) from public.assets where id = 'aaaaaaaa-0000-4000-8000-000000000001' and archived_at is not null), 1::bigint, 'RLS prevents deleting archived asset');
 select is((select count(*) from public.vehicle_profiles where asset_id = 'aaaaaaaa-0000-4000-8000-000000000001'), 1::bigint, 'RLS prevents deleting profile');
 reset role;
-select throws_ok($$update public.vehicle_profiles set organization_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' where asset_id = 'aaaaaaaa-0000-4000-8000-000000000001'$$, '23503', null, 'Composite foreign key prevents mismatched tenant profiles');
+-- B already has VIN-A from the cross-tenant VIN reuse test. Clear the VIN in
+-- this attempted update so only the composite foreign key can reject it.
+select throws_ok($$update public.vehicle_profiles set organization_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', vin = null where asset_id = 'aaaaaaaa-0000-4000-8000-000000000001'$$, '23503', null, 'Composite foreign key prevents mismatched tenant profiles');
 select throws_ok($$update public.assets set asset_type = 'equipment' where id = 'aaaaaaaa-0000-4000-8000-000000000001'$$, '23514', null, 'Equipment is not an implemented asset type');
 select * from finish();
 rollback;
