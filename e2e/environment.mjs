@@ -4,6 +4,10 @@ import { parseEnv } from "node:util";
 // Existing FleetFalcon development data is protected even if a caller mislabels
 // its project as E2E. Add future customer-facing projects to the protected list.
 export const existingDevelopmentProject = "kgmxzjnqowsishsiyjug";
+
+// NextRequest canonicalizes loopback IPs to localhost. Keep browser origins and
+// host-only session cookies on that same hostname through confirmation redirects.
+export const browserBaseURL = "http://localhost:3210";
 const projectRef = /^[a-z]{20}$/;
 
 /** @param {Record<string, string | undefined>} values */

@@ -1,4 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
+import { NextRequest } from "next/server";
+import { browserBaseURL } from "../../../../e2e/environment.mjs";
 
 const verifyOtp = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/supabase/server", () => ({
@@ -43,4 +45,21 @@ test("expired or reused tokens do not open organizations", async () => {
   );
   expect(response.status).toBe(400);
   expect(response.headers.get("Location")).toBeNull();
+});
+
+test("confirmation stays on the E2E browser's cookie origin after Next.js normalization", async () => {
+  verifyOtp.mockResolvedValue({ error: null });
+  const response = await GET(
+    new NextRequest(
+      `${browserBaseURL}/auth/confirm?token_hash=synthetic&type=email&next=https://attacker.example`,
+    ),
+  );
+  expect(verifyOtp).toHaveBeenCalledWith({
+    token_hash: "synthetic",
+    type: "email",
+  });
+  expect(response.status).toBe(303);
+  expect(response.headers.get("Location")).toBe(
+    `${browserBaseURL}/organizations`,
+  );
 });

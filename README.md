@@ -617,6 +617,10 @@ npm run test:e2e
 `npm run test:e2e -- --list` discovers tests without credentials, a browser,
 server startup, or hosted requests. Normal execution launches its own local
 Next.js server and runs Chromium with one worker and no automatic retries.
+The server and browser both use `http://localhost:3210`. Keep this hostname:
+Next.js normalizes loopback IP request URLs to `localhost`, so using
+`127.0.0.1` in the browser causes same-origin mutation checks to fail and
+confirmation redirects to leave the hostname holding the session cookies.
 `npm test` also includes unit tests of target blocking, process-environment
 sanitization, and recovery-manifest validation.
 

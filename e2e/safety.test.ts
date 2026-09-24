@@ -1,10 +1,29 @@
 import { expect, test } from "vitest";
+import { NextRequest } from "next/server";
 import {
+  browserBaseURL,
   validateTarget,
   safeProcessEnvironment,
   existingDevelopmentProject,
 } from "./environment.mjs";
 import { validManifest } from "./admin";
+
+test("the browser origin survives Next.js normalization for CSRF and session redirects", () => {
+  const request = new NextRequest(`${browserBaseURL}/api/organizations`, {
+    method: "POST",
+    headers: { origin: browserBaseURL, host: new URL(browserBaseURL).host },
+  });
+  expect(new URL(request.url).origin).toBe(request.headers.get("origin"));
+  expect(new URL(request.url).host).toBe(request.headers.get("host"));
+
+  const confirmation = new NextRequest(
+    `${browserBaseURL}/auth/confirm?token_hash=synthetic&type=email`,
+  );
+  // Redirects must keep the hostname that received the host-only Auth cookies.
+  expect(new URL("/organizations", confirmation.url).origin).toBe(
+    browserBaseURL,
+  );
+});
 
 const project = "abcdefghijklmnopqrst";
 const target = {

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:net";
 import {
   configuration,
+  browserBaseURL,
   publicProcessEnvironment,
   safeProcessEnvironment,
 } from "./environment.mjs";
@@ -72,8 +73,8 @@ try {
   console.log(
     `E2E run: ${runId}. Evidence and recovery manifests: ${directory}`,
   );
-  const port = 3210;
-  const baseURL = `http://127.0.0.1:${port}`;
+  const baseURL = browserBaseURL;
+  const { hostname, port } = new URL(baseURL);
   const stop = () => {
     interrupted = true;
     void stopProcess(runner);
@@ -94,7 +95,7 @@ try {
           new Error("Port 3210 is occupied; refusing to reuse another server."),
         ),
       );
-      probe.listen(port, "127.0.0.1", () => probe.close(resolve));
+      probe.listen(Number(port), hostname, () => probe.close(resolve));
     });
     const log = createWriteStream(`${directory}/next.log`, { mode: 0o600 });
     server = spawn(
@@ -103,7 +104,7 @@ try {
         "node_modules/next/dist/bin/next",
         "dev",
         "--hostname",
-        "127.0.0.1",
+        hostname,
         "--port",
         String(port),
       ],

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { safeProcessEnvironment } from "./e2e/environment.mjs";
+import { browserBaseURL, safeProcessEnvironment } from "./e2e/environment.mjs";
 
 const runId = process.env.E2E_RUN_ID ?? "discovery";
 const reportPrefix = process.argv.includes("--project=cleanup")
@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   use: {
     ...devices["Desktop Chrome"],
-    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:3210",
+    baseURL: process.env.E2E_BASE_URL ?? browserBaseURL,
     timezoneId: "UTC",
     // Avoid persisting passwords, cookies, or confirmation tokens in network traces.
     trace: "off",
