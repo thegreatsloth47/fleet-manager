@@ -22,33 +22,38 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
     .getByRole("link", { name: "Mileage and odometer history" })
     .click();
   await expect(page.getByText("No mileage recorded yet.")).toBeVisible();
-  await saveMileage(page, { observed: "2020-01-01T12:00:00", physical: "100" });
+  await expect(
+    page.getByRole("combobox", { name: "Unit", exact: true }),
+  ).toHaveValue("mi");
+  await saveMileage(page, { observed: "2020-01-01T12:00", physical: "100" });
   await usage(page, "100", "100");
-  await expect(page.getByLabel("Unit", { exact: true })).toHaveCount(0);
-  await saveMileage(page, { observed: "2020-01-03T12:00:00", physical: "150" });
+  await expect(
+    page.getByRole("combobox", { name: "Unit", exact: true }),
+  ).toHaveCount(0);
+  await saveMileage(page, { observed: "2020-01-03T12:00", physical: "150" });
   await usage(page, "150", "150");
-  await saveMileage(page, { observed: "2020-01-02T12:00:00", physical: "125" });
+  await saveMileage(page, { observed: "2020-01-02T12:00", physical: "125" });
   await usage(page, "150", "150");
   await page.getByRole("button", { name: "Replace/reset odometer" }).click();
   await saveMileage(page, {
-    observed: "2020-01-04T12:00:00",
+    observed: "2020-01-04T12:00",
     physical: "10",
     oldFinal: "200",
     reason: "Broken physical odometer",
   });
   await usage(page, "10", "200");
-  await saveMileage(page, { observed: "2020-01-05T12:00:00", physical: "30" });
+  await saveMileage(page, { observed: "2020-01-05T12:00", physical: "30" });
   await usage(page, "30", "220");
   await page.getByRole("button", { name: "Replace/reset odometer" }).click();
   await saveMileage(page, {
-    observed: "2020-01-06T12:00:00",
+    observed: "2020-01-06T12:00",
     physical: "1000",
     oldFinal: "50",
     reason: "Second physical replacement",
   });
   await usage(page, "1000", "240");
   await saveMileage(page, {
-    observed: "2020-01-07T12:00:00",
+    observed: "2020-01-07T12:00",
     physical: "1010",
   });
   await usage(page, "1010", "250");
@@ -95,24 +100,24 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
   await page.getByRole("button", { name: "Add reading", exact: true }).click();
   await saveMileage(
     page,
-    { observed: "2020-01-04T18:00:00", physical: "35" },
+    { observed: "2020-01-04T18:00", physical: "35" },
     400,
   );
   await saveMileage(
     page,
-    { observed: "2020-01-03T12:00:00", physical: "150" },
+    { observed: "2020-01-03T12:00", physical: "150" },
     409,
   );
   await saveMileage(
     page,
-    { observed: "2999-01-01T12:00:00", physical: "1100" },
+    { observed: "2999-01-01T12:00", physical: "1100" },
     400,
   );
   await page.getByRole("button", { name: "Replace/reset odometer" }).click();
   await saveMileage(
     page,
     {
-      observed: "2020-01-05T18:00:00",
+      observed: "2020-01-05T18:00",
       physical: "0",
       oldFinal: "40",
       reason: "Backdated replacement is disallowed",
@@ -154,9 +159,14 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   await page
     .getByRole("link", { name: "Mileage and odometer history" })
     .click();
-  await page.getByLabel("Unit", { exact: true }).selectOption("km");
+  await page
+    .getByRole("combobox", { name: "Unit", exact: true })
+    .selectOption("km");
+  await expect(
+    page.getByRole("combobox", { name: "Unit", exact: true }),
+  ).toHaveValue("km");
   await saveMileage(page, {
-    observed: "2020-01-01T12:00:00",
+    observed: "2020-01-01T12:00",
     physical: "10.1",
     accumulated: "500.1",
     reason: "Known usage before earlier replacement",
@@ -168,7 +178,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
       request.method() === "POST" && request.url().endsWith("/mileage"),
   );
   await saveMileage(page, {
-    observed: "2020-01-02T12:00:00",
+    observed: "2020-01-02T12:00",
     physical: "0.1",
     oldFinal: "20.3",
     reason: "Replacement",
@@ -182,7 +192,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   await page.reload();
   await usage(page, "0.1", "510.3", "km");
   await expect(page.locator("ol > li")).toHaveCount(2);
-  await saveMileage(page, { observed: "2020-01-03T12:00:00", physical: "0.3" });
+  await saveMileage(page, { observed: "2020-01-03T12:00", physical: "0.3" });
   await usage(page, "0.3", "510.5", "km");
   const baseline = page
     .locator("ol > li")

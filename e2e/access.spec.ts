@@ -43,9 +43,9 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await page
     .getByRole("link", { name: "Mileage and odometer history" })
     .click();
-  await saveMileage(page, { physical: "100", observed: "2020-01-01T12:00:00" });
+  await saveMileage(page, { physical: "100", observed: "2020-01-01T12:00" });
   await usage(page, "100", "100");
-  await saveMileage(page, { physical: "120", observed: "2020-01-02T12:00:00" });
+  await saveMileage(page, { physical: "120", observed: "2020-01-02T12:00" });
   await usage(page, "120", "120");
   await page
     .locator("ol > li")
@@ -65,7 +65,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await saveMileage(page, {
     physical: "0",
     oldFinal: "130",
-    observed: "2020-01-03T12:00:00",
+    observed: "2020-01-03T12:00",
     reason: "Admin replacement",
   });
   await usage(page, "0", "130");

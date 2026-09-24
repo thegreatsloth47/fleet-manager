@@ -122,6 +122,8 @@ export async function saveMileage(
   expectedStatus = 201,
 ) {
   const form = page.getByRole("region", { name: "Record mileage" });
+  // Use canonical datetime-local values: Chromium strips zero seconds, and
+  // Playwright rejects a fill when the browser changes the supplied value.
   if (values.observed)
     await form
       .getByLabel("Observed at (your local time)")

@@ -35,7 +35,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     .getByLabel("Description", { exact: true })
     .fill("Isolated browser test vehicle");
   await page
-    .getByLabel("Status", { exact: true })
+    .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("out_of_service");
   const saved = page.waitForResponse(
     (r) =>
@@ -52,9 +52,9 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     }),
   ).toBeVisible();
   await expect(page.getByLabel("Make", { exact: true })).toHaveValue("Ford");
-  await expect(page.getByLabel("Status", { exact: true })).toHaveValue(
-    "out_of_service",
-  );
+  await expect(
+    page.getByRole("combobox", { name: "Status", exact: true }),
+  ).toHaveValue("out_of_service");
   await page.getByLabel("Description", { exact: true }).fill("");
   const cleared = page.waitForResponse((r) => r.request().method() === "PUT");
   await page.getByRole("button", { name: "Save vehicle" }).click();
