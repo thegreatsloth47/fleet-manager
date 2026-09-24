@@ -70,6 +70,25 @@ test.each([201, 400, 401, 500])(
   },
 );
 
+test("creation returns a complete JSON body containing the organization ID", async () => {
+  const response = await POST(
+    new Request("http://localhost/api/organizations", {
+      method: "POST",
+      headers: {
+        origin: "http://localhost",
+        "Content-Type": "application/json",
+      },
+      body: '{"name":"Team"}',
+    }),
+  );
+  expect(response.status).toBe(201);
+  expect(response.headers.get("Content-Type")).toBe("application/json");
+  await expect(response.json()).resolves.toEqual({
+    organization: { id: "created" },
+  });
+  expect(response.bodyUsed).toBe(true);
+});
+
 test.each(["", "not-a-uuid", "' or true --"])(
   "rejects invalid organization ID: %s",
   async (id) => {

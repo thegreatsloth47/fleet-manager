@@ -50,22 +50,21 @@ export async function createOrganization(
     .click();
   const response = await responsePromise;
   expect(response.status()).toBe(201);
-  const result: unknown = await response.json();
-  if (
-    !result ||
-    typeof result !== "object" ||
-    !("organization" in result) ||
-    !result.organization ||
-    typeof result.organization !== "object" ||
-    !("id" in result.organization) ||
-    typeof result.organization.id !== "string"
-  )
-    throw new Error("Invalid organization response.");
-  const id = result.organization.id;
+  // The form does not consume the fetch body. Chromium can leave that response
+  // pending even after the server finishes, so read the persisted result in UI.
+  const organization = page.getByRole("listitem").filter({ hasText: name });
+  const vehicles = organization.getByRole("link", {
+    name: "Vehicles",
+    exact: true,
+  });
+  await expect(vehicles).toBeVisible();
+  const href = await vehicles.getAttribute("href");
+  const match = href?.match(
+    /^\/organizations\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/vehicles$/,
+  );
+  if (!match) throw new Error("Invalid organization Vehicles link.");
+  const id = match[1];
   await fixtures.registerOrganization(name, id);
-  await expect(
-    page.getByRole("listitem").filter({ hasText: name }),
-  ).toBeVisible();
   return id;
 }
 

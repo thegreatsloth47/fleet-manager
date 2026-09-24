@@ -26,7 +26,16 @@ test("protected routes, failed login, real password login, organization creation
   await expect(
     page.getByText("You have no active organization memberships."),
   ).toBeVisible();
-  const organization = await createOrganization(page, fixtures, owner);
+  const organization = await test.step(
+    "organization creation completes without reading the unconsumed POST body",
+    () => createOrganization(page, fixtures, owner),
+    { timeout: 30_000 },
+  );
+  const listed = await browserRequest(page, "/api/organizations");
+  expect(listed.status).toBe(200);
+  expect(listed.body).toMatchObject({
+    organizations: [{ id: organization, role: "owner" }],
+  });
   await expect(page.getByRole("status")).toContainText("You are its owner");
   await page.reload();
   await expect(
