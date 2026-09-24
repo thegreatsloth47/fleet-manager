@@ -1,0 +1,6 @@
+# Preserve repository instructions and reference documents.
+AGENTS.md
+docs/
+
+# npm owns the lockfile formatting.
+package-lock.json
