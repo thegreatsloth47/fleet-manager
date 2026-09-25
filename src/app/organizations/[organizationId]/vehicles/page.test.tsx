@@ -1,6 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ get: vi.fn(), access: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  access: vi.fn(),
+  maintenance: vi.fn(),
+}));
+vi.mock("@/modules/maintenance/service", () => ({
+  getMaintenance: mocks.maintenance,
+}));
 vi.mock("@/modules/assets/queries", () => ({ getVehicles: mocks.get }));
 vi.mock("@/modules/assets/access", () => ({ authorizeVehicles: mocks.access }));
 vi.mock("next/navigation", () => ({
@@ -37,6 +44,7 @@ const vehicle = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.maintenance.mockResolvedValue({ status: 200, data: { items: [] } });
   mocks.get.mockResolvedValue({
     status: 200,
     data: { vehicles: [vehicle], canManage: true },
@@ -74,6 +82,7 @@ test("read-only members see no write controls", async () => {
   );
   const detail = renderToStaticMarkup(await VehiclePage(props));
   expect(detail).toContain("VIN-A");
+  expect(detail).toContain("Manage or view maintenance");
   expect(detail).not.toContain("Vehicle editor");
   expect(detail).not.toContain("Archive vehicle");
   mocks.access.mockResolvedValue({ status: 403, error: "Access denied" });
@@ -90,6 +99,7 @@ test("archived vehicles remain visible and read-only for owners", async () => {
   const detail = renderToStaticMarkup(await VehiclePage(props));
   expect(detail).toContain("Archived — read-only");
   expect(detail).toContain("VIN-A");
+  expect(detail).toContain("Manage or view maintenance");
   expect(detail).not.toContain("Vehicle editor");
   expect(detail).not.toContain("Archive vehicle");
 });

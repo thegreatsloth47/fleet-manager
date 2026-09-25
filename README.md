@@ -692,3 +692,99 @@ owner setup and a first approved Actions run. Test discovery and static/unit
 checks do not establish that hosted workflows pass. The complete signup →
 delivered email → browser confirmation flow stays explicitly skipped until a
 controlled test mailbox is configured. No product behavior was changed for E2E.
+
+## Maintenance templates, vehicle schedules, and dashboard
+
+The maintenance increment adds organization templates and separate asset-owned
+assignments. Owners/admins manage them; read-only members can view them. Drivers,
+revoked members, outsiders, and anonymous callers retain their existing restricted
+access. The dashboard is linked from Organizations and Vehicles.
+
+### Approved maintenance semantics
+
+- A template/schedule uses distance, calendar time, or both. Distance uses the
+  initialized odometer's existing `mi` or `km` unit without conversion. Calendar
+  intervals are whole days, weeks, months, or years; calendar-only schedules do
+  not require a meter.
+- An assignment requires explicit next-due accumulated usage and/or a next-due
+  calendar date for its configured dimensions. Past targets are allowed. Creating
+  a schedule does not assert that service occurred.
+- Upcoming and due windows are independently configurable integer percentages,
+  defaulting to 10% and 5%, with `0 <= due <= upcoming <= 100`. Outside upcoming
+  is **Not due**; within upcoming but outside due is **Upcoming**; within due
+  through the target is **Due**; any usage/date past the target is **Overdue**.
+  Combined schedules expose the more urgent dimension.
+- Distance calculations use exact integer tenths and the meter domain's logical
+  accumulated usage, including corrections, voids, and odometer replacements.
+  Meter changes recompute status without moving schedule targets.
+- Calendar status uses the organization's local date. Month/year arithmetic
+  clamps to the last valid day of the destination month. Calendar window lengths
+  are calculated from the number of days between the next-due date and that date
+  shifted backward by the calendar interval; percentage windows round upward to
+  whole days. UTC date arithmetic avoids DST changing calendar-day distances.
+  Status is evaluated on reads; there are no scheduled jobs in this increment.
+- Assignment settings are copied from the template. Later template edits apply
+  only to future assignments; existing assignments have explicit edit controls.
+  A vehicle has at most one assignment of a given template. Optimistic versions
+  reject stale template/schedule edits rather than overwriting newer changes.
+- Pausing a schedule retains its targets and suppresses its alerts. Disabling a
+  template suppresses all linked alerts and prevents new assignments. Re-enabling
+  or resuming evaluates the retained targets against current usage/date.
+- Archived vehicles retain readable schedules but reject schedule changes and
+  never contribute active alerts or setup warnings. Non-archived out-of-service
+  vehicles still contribute maintenance alerts.
+- The dashboard orders Overdue, Due, then Upcoming items, with stable vehicle/name
+  ordering within each group. It shows targets, remaining/overdue distance/days,
+  and the last mileage observation date. Vehicles lacking mileage or any assigned
+  schedules appear separately under Finish setup; paused/disabled schedules do
+  not masquerade as missing setup.
+
+`src/modules/maintenance` owns validation, deterministic status calculation, and
+application queries/commands. UI components render those results. Existing asset
+access checks are reused because maintenance has exactly the same role boundary;
+the database command independently validates active membership. RLS reinforces
+all reads, composite foreign keys enforce tenant ownership, and a trigger checks
+that a schedule's meter belongs to its asset and uses the same unit. Ordinary
+clients have no direct table mutation grants or write policies.
+
+Stable assignment IDs are the future service-history integration point. A future
+qualifying service can reference the assignment and atomically advance distance to
+`accumulated usage at service + distance interval`, calendar time to
+`service date + calendar interval`, or both. This increment does not create service
+records, completion actions, documents, notifications, offline queues, or jobs.
+
+### Maintenance migration and verification
+
+Review `supabase/migrations/20260924000000_maintenance.sql`. It creates
+`maintenance_templates`, `maintenance_assignments`, their constraints/RLS, the
+`save_maintenance` command, and an invoker-security `maintenance_usage` read that
+reuses `meter_history`. Existing vehicles receive no automatic schedules or
+inferred maintenance targets. No existing meter/vehicle data is rewritten.
+
+1. Run the existing CI validation and database jobs on the feature branch. The
+   database job starts local Supabase, applies all migrations, and automatically
+   runs `supabase/tests/maintenance.test.sql` alongside existing pgTAP tests.
+2. With an already-running **local** Supabase instance, apply the migration using
+   `npx supabase migration up --local`, then run `npm run test:db`. Review generated
+   types using `npm run db:types` against the checked-in schema types.
+3. Before any hosted use, a human must review and apply the migration to the
+   intended environment. This implementation does not modify hosted Supabase.
+4. After the dedicated E2E project's schema is updated through that separate
+   process, run the existing **Hosted E2E** workflow against the feature branch,
+   with its existing project-ref confirmation and fixture-cleanup authorization.
+   The workflow remains manually dispatched and runs the selected branch; it
+   never applies migrations. Preflight now requires both maintenance tables.
+   Exact-ID fixture inventory/cleanup includes schedules before templates/meters
+   and remains compatible with recovery manifests from before this increment.
+5. Manually verify a miles or kilometers schedule near each window boundary, a
+   calendar-only schedule without mileage, and a combined schedule with different
+   urgency in each dimension. Verify organization-date/month-end behavior; edit
+   targets and windows; replace/correct a meter; pause/resume; disable/enable the
+   template; and archive the vehicle. Confirm dashboard priorities, retained
+   targets, and owner/admin versus read-only/driver behavior.
+
+The added Playwright workflows exercise distance status transitions through a
+physical replacement and correction, template snapshot independence, pause and
+resume, disable and enable, archival, calendar-only setup, combined-threshold
+priority, kilometer/unit validation, and real-session role/tenant/revocation
+boundaries. They use the existing runner, fixtures, and hosted safety checks.

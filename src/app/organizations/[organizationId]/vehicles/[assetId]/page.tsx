@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getVehicles } from "@/modules/assets/queries";
 import VehicleForm from "../vehicle-form";
+import { getMaintenance } from "@/modules/maintenance/service";
+import MaintenanceStatus from "../../maintenance/maintenance-status";
 import ArchiveButton from "../archive-button";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ export default async function VehiclePage({
       </main>
     );
   const vehicle = result.data.vehicles[0];
+  const maintenance = await getMaintenance(organizationId, assetId);
   return (
     <main>
       <p>
@@ -38,6 +41,26 @@ export default async function VehiclePage({
           Mileage and odometer history
         </Link>
       </p>
+      <section>
+        <h2>Maintenance</h2>
+        <p>
+          <Link
+            href={`/organizations/${organizationId}/vehicles/${assetId}/maintenance`}
+          >
+            Manage or view maintenance
+          </Link>
+        </p>
+        {maintenance.error && <p role="alert">{maintenance.error}</p>}
+        {maintenance.data && !maintenance.data.items.length && (
+          <p>No maintenance schedules assigned.</p>
+        )}
+        {maintenance.data?.items.map((item) => (
+          <div key={item.id}>
+            <h3>{item.name}</h3>
+            <MaintenanceStatus item={item} />
+          </div>
+        ))}
+      </section>
       {vehicle.archived_at && <p>Archived — read-only</p>}
       <dl>
         <dt>Status</dt>

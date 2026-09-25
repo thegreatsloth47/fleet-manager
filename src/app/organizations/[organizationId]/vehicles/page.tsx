@@ -21,6 +21,10 @@ export default async function VehiclesPage({
     <main>
       <p>
         <Link href="/organizations">Organizations</Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/dashboard`}>
+          Maintenance dashboard
+        </Link>
       </p>
       <h1>{archived ? "Archived vehicles" : "Vehicles"}</h1>
       <p>

@@ -1,3 +1,8 @@
+import type {
+  Template,
+  Assignment,
+  MaintenanceCommand,
+} from "@/modules/maintenance/maintenance";
 import type { MeterCommand, MeterHistory } from "@/modules/meters/meter";
 
 type Json =
@@ -12,6 +17,24 @@ type Json =
 export type Database = {
   public: {
     Tables: {
+      maintenance_templates: {
+        Row: Template;
+        Insert: Omit<Template, "version" | "updated_at"> & {
+          version?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Template>;
+        Relationships: [];
+      };
+      maintenance_assignments: {
+        Row: Assignment;
+        Insert: Omit<Assignment, "version" | "updated_at"> & {
+          version?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Assignment>;
+        Relationships: [];
+      };
       meters: {
         Row: {
           id: string;
@@ -315,6 +338,23 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      save_maintenance: {
+        Args: {
+          target_organization_id: string;
+          target_asset_id: string | null;
+          payload: MaintenanceCommand;
+        };
+        Returns: string;
+      };
+      maintenance_usage: {
+        Args: { target_organization_id: string };
+        Returns: {
+          asset_id: string;
+          accumulated: string;
+          unit: string;
+          observed_at: string;
+        }[];
+      };
       meter_history: {
         Args: { target_organization_id: string; target_asset_id: string };
         Returns: MeterHistory[];

@@ -117,6 +117,30 @@ test("recovery accepts well-formed identities and a scoped exact-ID deletion pla
   ).toBe(true);
 });
 
+test("maintenance recovery IDs must be explicit UUID arrays; legacy manifests remain supported", () => {
+  const deletionPlan = {
+    organizationIds: [orgId],
+    assetIds: [],
+    meterIds: [],
+    entryIds: [],
+    revisionIds: [],
+    memberships: [],
+    templateIds: [userId],
+    assignmentIds: [fixtureId],
+  };
+  expect(validManifest({ ...manifest, deletionPlan })).toBe(true);
+  for (const field of ["templateIds", "assignmentIds"]) {
+    for (const invalid of [null, "all", ["not-a-uuid"], [42]]) {
+      expect(
+        validManifest({
+          ...manifest,
+          deletionPlan: { ...deletionPlan, [field]: invalid },
+        }),
+      ).toBe(false);
+    }
+  }
+});
+
 test.each([
   null,
   [],

@@ -14,6 +14,8 @@ type DeletionPlan = {
   meterIds: string[];
   entryIds: string[];
   revisionIds: string[];
+  templateIds?: string[];
+  assignmentIds?: string[];
   memberships: { organization_id: string; user_id: string }[];
 };
 type Manifest = {
@@ -110,6 +112,8 @@ export class Fixtures {
       "meters",
       "meter_entries",
       "meter_revisions",
+      "maintenance_templates",
+      "maintenance_assignments",
     ] as const) {
       const { error } = await this.client.from(table).select("*").limit(0);
       if (error)
@@ -323,12 +327,34 @@ export class Fixtures {
         memberships.some((member) => !userIds.includes(member.user_id))
       )
         throw new Error("Unexpected membership; cleanup stopped.");
+      const { data: templates, error: templateError } = await this.client
+        .from("maintenance_templates")
+        .select("id,updated_by")
+        .in("organization_id", orgIds);
+      const { data: assignments, error: assignmentError } = await this.client
+        .from("maintenance_assignments")
+        .select("id,asset_id,template_id,updated_by")
+        .in("organization_id", orgIds);
+      if (
+        templateError ||
+        assignmentError ||
+        templates.some((row) => !userIds.includes(row.updated_by)) ||
+        assignments.some(
+          (row) =>
+            !userIds.includes(row.updated_by) ||
+            !assets.some((asset) => asset.id === row.asset_id) ||
+            !templates.some((template) => template.id === row.template_id),
+        )
+      )
+        throw new Error("Unexpected maintenance records; cleanup stopped.");
       const inventory: DeletionPlan = {
         organizationIds: orgIds,
         assetIds: assets.map((row) => row.id),
         meterIds: meters.map((row) => row.id),
         entryIds: entries.map((row) => row.id),
         revisionIds: revisions.map((row) => row.id),
+        templateIds: templates.map((row) => row.id),
+        assignmentIds: assignments.map((row) => row.id),
         memberships,
       };
       if (this.manifest.deletionPlan) {
@@ -339,8 +365,14 @@ export class Fixtures {
           "meterIds",
           "entryIds",
           "revisionIds",
+          "templateIds",
+          "assignmentIds",
         ] as const)
-          if (inventory[key].some((id) => !prior[key].includes(id)))
+          if (
+            (inventory[key] ?? []).some(
+              (id) => !(prior[key] ?? []).includes(id),
+            )
+          )
             throw new Error(
               "Fixture changed after cleanup started; manual review required.",
             );
@@ -365,6 +397,8 @@ export class Fixtures {
       // boundary. New or unrelated records are never swept up by recovery.
       const plan = this.manifest.deletionPlan;
       for (const [table, ids] of [
+        ["maintenance_assignments", plan.assignmentIds ?? []],
+        ["maintenance_templates", plan.templateIds ?? []],
         ["meter_revisions", plan.revisionIds],
         ["meter_entries", plan.entryIds],
         ["meters", plan.meterIds],
@@ -483,8 +517,16 @@ export function validManifest(value: unknown): value is Manifest {
       "meterIds",
       "entryIds",
       "revisionIds",
+      "templateIds",
+      "assignmentIds",
     ]) {
       const ids: unknown = Reflect.get(plan, key);
+      // Older recovery manifests predate maintenance fixtures.
+      if (
+        (key === "templateIds" || key === "assignmentIds") &&
+        ids === undefined
+      )
+        continue;
       if (
         !Array.isArray(ids) ||
         !ids.every((id) => typeof id === "string" && uuid.test(id))

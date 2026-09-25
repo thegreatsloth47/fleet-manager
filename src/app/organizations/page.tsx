@@ -27,6 +27,10 @@ export default async function OrganizationsPage() {
                   <a href={`/organizations/${organization.id}/vehicles`}>
                     Vehicles
                   </a>
+                  {" · "}
+                  <a href={`/organizations/${organization.id}/dashboard`}>
+                    Maintenance dashboard
+                  </a>
                 </>
               )}
             </li>
