@@ -128,10 +128,14 @@ export async function saveMileage(
     await form
       .getByLabel("Observed at (your local time)")
       .fill(values.observed);
-  if (values.physical !== undefined)
-    await form
-      .getByLabel(/^(Physical odometer reading|New odometer starting reading)$/)
-      .fill(values.physical);
+  if (values.physical !== undefined) {
+    // Role names normalize the label's trailing JSX whitespace; label regexes do not.
+    const physical = form.getByRole("spinbutton", {
+      name: /^(Physical odometer reading|New odometer starting reading)$/,
+    });
+    await physical.fill(values.physical);
+    await expect(physical).toHaveValue(values.physical);
+  }
   if (values.accumulated !== undefined)
     await form
       .getByLabel("Declared accumulated usage")

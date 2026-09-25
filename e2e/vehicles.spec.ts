@@ -31,9 +31,13 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   await page.getByLabel("Year", { exact: true }).fill("2024");
   await page.getByLabel("License plate", { exact: true }).fill("E2E-123");
   await page.getByLabel("Plate jurisdiction").fill("MO");
-  await page
-    .getByLabel("Description", { exact: true })
-    .fill("Isolated browser test vehicle");
+  // A saved textarea's text joins the wrapping label text after a reload.
+  // Its accessible textbox name remains Description for both empty and saved values.
+  const description = page.getByRole("textbox", {
+    name: "Description",
+    exact: true,
+  });
+  await description.fill("Isolated browser test vehicle");
   await page
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("out_of_service");
@@ -55,12 +59,13 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   await expect(
     page.getByRole("combobox", { name: "Status", exact: true }),
   ).toHaveValue("out_of_service");
-  await page.getByLabel("Description", { exact: true }).fill("");
+  await expect(description).toHaveValue("Isolated browser test vehicle");
+  await description.fill("");
   const cleared = page.waitForResponse((r) => r.request().method() === "PUT");
   await page.getByRole("button", { name: "Save vehicle" }).click();
   expect((await cleared).status()).toBe(200);
   await page.reload();
-  await expect(page.getByLabel("Description", { exact: true })).toHaveValue("");
+  await expect(description).toHaveValue("");
 
   await page.goto(`/organizations/${organization}/vehicles/new`);
   await page
