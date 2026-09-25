@@ -150,9 +150,19 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     schedule(page, "Oil").getByText("Due", { exact: true }),
   ).toBeVisible();
   await page.goto(`/organizations/${org}/maintenance`);
-  await schedule(page, "Oil")
-    .getByText("Edit template", { exact: true })
-    .click();
+  // The same text also names the fieldset legend inside the disclosure.
+  const editTemplate = schedule(page, "Oil")
+    .locator("summary")
+    .filter({ hasText: /^Edit template$/ });
+  await expect(editTemplate).toHaveCount(1);
+  await editTemplate.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    schedule(page, "Oil").getByRole("group", {
+      name: "Edit template",
+      exact: true,
+    }),
+  ).toBeVisible();
   await schedule(page, "Oil")
     .getByLabel("Distance interval", { exact: true })
     .fill("2000");
@@ -165,7 +175,8 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await expect(page.getByText("No active maintenance alerts.")).toBeVisible();
   await page.goto(`/organizations/${org}/maintenance`);
   await schedule(page, "Oil")
-    .getByText("Edit template", { exact: true })
+    .locator("summary")
+    .filter({ hasText: /^Edit template$/ })
     .click();
   await schedule(page, "Oil").getByLabel("Template enabled").check();
   await saveForm(page, schedule(page, "Oil"), "Save template", 200);
