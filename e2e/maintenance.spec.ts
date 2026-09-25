@@ -205,7 +205,8 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await expect(
     schedule(page, "Oil").getByText("Archived", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("button")).toHaveCount(0);
+  // next dev adds a Dev Tools button outside the application content.
+  await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
 });
 
 test("calendar-only schedules need no meter; combined schedules choose the earliest threshold and dashboard prioritizes urgency", async ({
@@ -304,7 +305,7 @@ test("maintenance owners/admins manage, readers view, and drivers, foreign tenan
   ]) {
     await page.goto(path);
     await expect(page.getByText("Maintenance is read-only.")).toBeVisible();
-    await expect(page.getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
     expect((await browserRequest(page, `/api${path}`, "POST", {})).status).toBe(
       403,
     );
