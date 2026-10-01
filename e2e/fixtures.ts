@@ -39,7 +39,7 @@ export async function createOrganization(
 ) {
   const name = fixtures.organizationIntent(owner, label);
   await page.goto("/organizations");
-  await page.getByLabel("Name", { exact: true }).fill(name);
+  await page.getByLabel("Organization name", { exact: true }).fill(name);
   const responsePromise = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/organizations" &&
@@ -78,10 +78,10 @@ export async function createVehicle(
   await page.goto(`/organizations/${organization}/vehicles`);
   await page.getByRole("link", { name: "Add vehicle", exact: true }).click();
   await page
-    .getByLabel("Display name/number")
+    .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-${label}`);
   if (vin) await page.getByLabel("VIN", { exact: true }).fill(vin);
-  await page.getByRole("button", { name: "Save vehicle", exact: true }).click();
+  await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(
     new RegExp(`/organizations/${organization}/vehicles/[0-9a-f-]{36}$`),
   );
@@ -131,15 +131,13 @@ export async function saveMileage(
   if (values.physical !== undefined) {
     // Role names normalize the label's trailing JSX whitespace; label regexes do not.
     const physical = form.getByRole("spinbutton", {
-      name: /^(Physical odometer reading|New odometer starting reading)$/,
+      name: /^(Odometer reading|New odometer reading)$/,
     });
     await physical.fill(values.physical);
     await expect(physical).toHaveValue(values.physical);
   }
   if (values.accumulated !== undefined)
-    await form
-      .getByLabel("Declared accumulated usage")
-      .fill(values.accumulated);
+    await form.getByLabel("Starting total distance").fill(values.accumulated);
   if (values.oldFinal !== undefined)
     await form.getByLabel("Old odometer final reading").fill(values.oldFinal);
   if (values.reason)
@@ -150,7 +148,7 @@ export async function saveMileage(
       response.request().method() === "POST",
   );
   await form
-    .getByRole("button", { name: /^(Save mileage|Confirm void)$/ })
+    .getByRole("button", { name: /^(Save mileage|Exclude reading)$/ })
     .click();
   expect((await response).status()).toBe(expectedStatus);
   await expect(form.locator("fieldset")).toBeEnabled();

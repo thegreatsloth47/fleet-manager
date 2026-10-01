@@ -33,7 +33,10 @@ beforeEach(() => {
       data: [{ id: asset, name: "Van", archived_at: null }],
       error: null,
     },
-    organizations: { data: { timezone: "America/Chicago" }, error: null },
+    organizations: {
+      data: { name: "Acme Fleet", timezone: "America/Chicago" },
+      error: null,
+    },
   };
   mocks.from.mockImplementation((table: string) => {
     const query = {
@@ -83,6 +86,11 @@ test("rejects malformed inputs before RPC", async () => {
 test("dashboard scopes every query, flags setup gaps, and rejects missing vehicles", async () => {
   const result = await getMaintenance(org);
   expect(result.data?.warnings).toHaveLength(2);
+  expect(result.data?.organizationName).toBe("Acme Fleet");
+  expect(result.data?.warnings.map((w) => w.page)).toEqual([
+    "mileage",
+    "maintenance",
+  ]);
   for (const query of Object.values(queries))
     expect(query.eq).toHaveBeenCalledWith(
       expect.stringMatching(/organization_id|id/),

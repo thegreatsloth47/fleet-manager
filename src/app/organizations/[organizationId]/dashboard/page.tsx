@@ -29,11 +29,14 @@ export default async function DashboardPage({
         <Link href={`/organizations/${organizationId}/maintenance`}>
           Maintenance templates
         </Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
-      <h1>Maintenance dashboard</h1>
+      <p>{result.data.organizationName}</p>
+      <h1>Dashboard</h1>
       <p>
-        As of {today} in your organization’s timezone. Based on recorded
-        mileage; refresh to see new readings or a new calendar day.
+        Maintenance due as of {today}, using your organization’s local date and
+        latest recorded mileage.
       </p>
       <dl>
         {(["Overdue", "Due", "Upcoming"] as const).map((status) => (
@@ -50,9 +53,15 @@ export default async function DashboardPage({
           <li key={item.id}>
             <h3>
               <Link
+                href={`/organizations/${organizationId}/vehicles/${item.asset_id}`}
+              >
+                {item.vehicleName}
+              </Link>
+              {" — "}
+              <Link
                 href={`/organizations/${organizationId}/vehicles/${item.asset_id}/maintenance`}
               >
-                {item.vehicleName} — {item.name}
+                {item.name}
               </Link>
             </h3>
             <MaintenanceStatus item={item} />
@@ -66,9 +75,16 @@ export default async function DashboardPage({
             {warnings.map((w) => (
               <li key={`${w.assetId}-${w.message}`}>
                 <Link
-                  href={`/organizations/${organizationId}/vehicles/${w.assetId}/maintenance`}
+                  href={`/organizations/${organizationId}/vehicles/${w.assetId}/${w.page}`}
                 >
-                  {w.name}
+                  {w.name} —{" "}
+                  {w.page === "mileage"
+                    ? result.data!.canManage
+                      ? "Record starting mileage"
+                      : "View mileage"
+                    : result.data!.canManage
+                      ? "Add schedule"
+                      : "View maintenance schedules"}
                 </Link>
                 : {w.message}
               </li>

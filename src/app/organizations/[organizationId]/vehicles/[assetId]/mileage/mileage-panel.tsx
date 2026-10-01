@@ -25,7 +25,6 @@ export default function MileagePanel({
   assetId,
   history,
   canManage,
-  vehicleName,
 }: Props) {
   const router = useRouter();
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -96,14 +95,13 @@ export default function MileagePanel({
 
   return (
     <>
-      <h2>{vehicleName}</h2>
       {current ? (
         <dl>
-          <dt>Physical odometer</dt>
+          <dt>Odometer reading</dt>
           <dd>
             {current.physical} {unit}
           </dd>
-          <dt>Accumulated usage</dt>
+          <dt>Total distance</dt>
           <dd>
             {current.accumulated} {unit}
           </dd>
@@ -114,8 +112,8 @@ export default function MileagePanel({
         <p>No mileage recorded yet.</p>
       )}
       <p>
-        Accumulated usage continues across odometer replacements. Initial
-        accumulated usage is a declared baseline.
+        Total distance includes distance from previous odometers. Replacing an
+        odometer does not reset the vehicle’s total distance.
       </p>
       {!canManage && <p>Mileage is read-only.</p>}
       {canManage && (
@@ -138,20 +136,26 @@ export default function MileagePanel({
           )}
           <h3>
             {action === "baseline"
-              ? "Initial mileage"
+              ? "Starting mileage"
               : action === "correct"
                 ? "Correct entry"
                 : action === "void"
-                  ? "Void reading"
+                  ? "Exclude reading"
                   : action === "replacement"
-                    ? "Physical odometer replacement/reset"
+                    ? "Replace or reset odometer"
                     : "Add reading"}
           </h3>
           {target && (
             <p>
-              Selected {target.kind}: {target.physical} {unit}, observed{" "}
-              {target.observed_at}. Original evidence and all revisions will
-              remain in history. Corrections keep the observation time fixed.
+              Selected{" "}
+              {target.kind === "baseline"
+                ? "starting reading"
+                : target.kind === "replacement"
+                  ? "odometer replacement"
+                  : "reading"}
+              : {target.physical} {unit}, observed {target.observed_at}. The
+              original reading and later changes stay in the history. The
+              recorded reading time stays the same.
             </p>
           )}
           {action === "replacement" && (
@@ -195,8 +199,8 @@ export default function MileagePanel({
                   <p>
                     <label>
                       {kind === "replacement"
-                        ? "New odometer starting reading"
-                        : "Physical odometer reading"}{" "}
+                        ? "New odometer reading"
+                        : "Odometer reading"}{" "}
                       <input
                         name="physical"
                         type="number"
@@ -211,9 +215,10 @@ export default function MileagePanel({
                   {kind === "baseline" && (
                     <p>
                       <label>
-                        Declared accumulated usage{" "}
+                        Starting total distance{" "}
                         <input
                           name="baseline_usage"
+                          aria-describedby="starting-total-distance-help"
                           type="number"
                           min="0"
                           max="999999999.9"
@@ -222,8 +227,11 @@ export default function MileagePanel({
                           required={action === "correct"}
                         />
                       </label>{" "}
-                      Leave blank initially to use the physical reading. Explain
-                      a higher known value.
+                      <span id="starting-total-distance-help">
+                        Includes distance from previous odometers. Leave blank
+                        to use the current odometer reading when recording
+                        starting mileage. Explain a higher total in the notes.
+                      </span>
                     </p>
                   )}
                   {kind === "replacement" && (
@@ -258,7 +266,7 @@ export default function MileagePanel({
                 {pending
                   ? "Saving…"
                   : action === "void"
-                    ? "Confirm void"
+                    ? "Exclude reading"
                     : "Save mileage"}
               </button>
             </fieldset>
@@ -268,8 +276,8 @@ export default function MileagePanel({
       {message && <p role="status">{message}</p>}
       <h2>Reading history</h2>
       <p>
-        Times below include their UTC offset. A voided reading does not
-        contribute to accumulated usage.
+        Excluded readings stay in the history but do not count toward total
+        distance.
       </p>
       <ol>
         {[...history].reverse().map((row) => (
@@ -277,20 +285,20 @@ export default function MileagePanel({
             <p>
               <strong>
                 {row.kind === "baseline"
-                  ? "Initial baseline"
+                  ? "Starting reading"
                   : row.kind === "replacement"
-                    ? "Physical replacement/reset"
+                    ? "Odometer replacement"
                     : "Reading"}
-                {row.voided ? " — voided" : ""}
+                {row.voided ? " — excluded" : ""}
               </strong>{" "}
               · {row.observed_at}
             </p>
             <p>
-              Physical: {row.physical} {row.unit}
+              Odometer reading: {row.physical} {row.unit}
               {!row.voided && (
                 <>
                   {" "}
-                  · Accumulated: {row.accumulated} {row.unit}
+                  · Total distance: {row.accumulated} {row.unit}
                 </>
               )}
             </p>
@@ -316,13 +324,13 @@ export default function MileagePanel({
                       setSelection({ action: "void", target: row })
                     }
                   >
-                    Void
+                    Exclude reading
                   </button>
                 )}
               </p>
             )}
             <details>
-              <summary>Original entry and audit history</summary>
+              <summary>Change history</summary>
               {auditLines(row.audit).map((line, index) => (
                 <p
                   style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}

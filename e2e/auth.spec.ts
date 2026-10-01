@@ -24,7 +24,7 @@ test("protected routes, failed login, real password login, organization creation
   );
   await signIn(page, owner);
   await expect(
-    page.getByText("You have no active organization memberships."),
+    page.getByText("You do not have access to an organization yet."),
   ).toBeVisible();
   const organization = await test.step(
     "organization creation completes without reading the unconsumed POST body",
@@ -41,7 +41,7 @@ test("protected routes, failed login, real password login, organization creation
   await expect(
     page.getByRole("link", { name: "Vehicles", exact: true }),
   ).toHaveAttribute("href", `/organizations/${organization}/vehicles`);
-  await page.getByRole("link", { name: "Account and sign out" }).click();
+  await page.getByRole("link", { name: "Account" }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/auth$/);
   await page.goto(`/organizations/${organization}/vehicles`);
@@ -61,7 +61,7 @@ test("generated signup link exercises the real confirmation handler and rejects 
   await page.goto(`${link}&next=https://example.com`);
   await expect(page).toHaveURL(/\/organizations$/);
   await expect(
-    page.getByText("You have no active organization memberships."),
+    page.getByText("You do not have access to an organization yet."),
   ).toBeVisible();
   await page.goto("/auth");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();

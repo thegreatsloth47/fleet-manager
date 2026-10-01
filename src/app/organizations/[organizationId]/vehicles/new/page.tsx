@@ -17,6 +17,12 @@ export default async function NewVehiclePage({
     <main>
       <p>
         <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/dashboard`}>
+          Dashboard
+        </Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
       <h1>Add vehicle</h1>
       {access.error ? (

@@ -36,13 +36,11 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   const edit = page.waitForResponse(
     (response) => response.request().method() === "PUT",
   );
-  await page.getByRole("button", { name: "Save vehicle" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
   expect((await edit).status()).toBe(200);
   await page.reload();
   await expect(page.getByLabel("Make", { exact: true })).toHaveValue("Ford");
-  await page
-    .getByRole("link", { name: "Mileage and odometer history" })
-    .click();
+  await page.getByRole("link", { name: "Mileage" }).click();
   await saveMileage(page, { physical: "100", observed: "2020-01-01T12:00" });
   await usage(page, "100", "100");
   await saveMileage(page, { physical: "120", observed: "2020-01-02T12:00" });
@@ -57,7 +55,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await page
     .locator("ol > li")
     .first()
-    .getByRole("button", { name: "Void", exact: true })
+    .getByRole("button", { name: "Exclude reading", exact: true })
     .click();
   await saveMileage(page, { reason: "Admin void" });
   await usage(page, "100", "100");
@@ -80,7 +78,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await page.goto(`/organizations/${organization}/vehicles`);
   await expect(page.getByRole("link", { name: "Add vehicle" })).toHaveCount(0);
   await page.goto(vehicle);
-  await expect(page.getByRole("button", { name: "Save vehicle" })).toHaveCount(
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
     0,
   );
   await page.goto(`${adminVehicle}/mileage`);
@@ -121,7 +119,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await signIn(page, admin);
   await page.goto(vehicle);
   await expect(
-    page.getByRole("button", { name: "Save vehicle" }),
+    page.getByRole("button", { name: "Save changes" }),
   ).toBeVisible();
   await fixtures.membership(organization, admin, "admin", "revoked");
   // Keep this browser and its authenticated session; no logout/token replacement.
@@ -139,7 +137,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   await page.goto("/organizations");
   await expect(
-    page.getByText("You have no active organization memberships."),
+    page.getByText("You do not have access to an organization yet."),
   ).toBeVisible();
 });
 
@@ -191,7 +189,7 @@ test("tenant IDs cannot cross boundaries and roles remain organization-specific"
       exact: true,
     }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save vehicle" })).toHaveCount(
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
     0,
   );
   expect(
@@ -203,13 +201,13 @@ test("tenant IDs cannot cross boundaries and roles remain organization-specific"
   ).toBe(403);
   await page.goto(vehicleB);
   await expect(
-    page.getByRole("button", { name: "Save vehicle" }),
+    page.getByRole("button", { name: "Save changes" }),
   ).toBeVisible();
   await signIn(page, ownerA);
   expect((await browserRequest(page, `/api${vehicleB}`)).status).toBe(404);
   await signIn(page, outsider);
   await expect(
-    page.getByText("You have no active organization memberships."),
+    page.getByText("You do not have access to an organization yet."),
   ).toBeVisible();
   for (const path of [vehicleA, vehicleB]) {
     expect((await browserRequest(page, `/api${path}`)).status).toBe(404);

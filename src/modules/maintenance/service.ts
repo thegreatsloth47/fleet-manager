@@ -23,9 +23,15 @@ export type MaintenanceOverview = {
   templates: Template[];
   items: MaintenanceItem[];
   alerts: MaintenanceItem[];
-  warnings: { assetId: string; name: string; message: string }[];
+  warnings: {
+    assetId: string;
+    name: string;
+    message: string;
+    page: "mileage" | "maintenance";
+  }[];
   canManage: boolean;
   today: string;
+  organizationName: string;
   vehicleName?: string;
 };
 
@@ -58,7 +64,7 @@ export async function getMaintenance(
       db.rpc("maintenance_usage", { target_organization_id: organizationId }),
       db
         .from("organizations")
-        .select("timezone")
+        .select("name,timezone")
         .eq("id", organizationId)
         .single(),
     ]);
@@ -98,7 +104,7 @@ export async function getMaintenance(
     if (!asset || !template)
       return {
         status: 500,
-        error: "Unable to load maintenance relationships.",
+        error: "Unable to load maintenance schedules.",
       };
     const meter = usage.data.find((m) => m.asset_id === asset.id);
     items.push({
@@ -131,13 +137,15 @@ export async function getMaintenance(
         assetId: asset.id,
         name: asset.name,
         message:
-          "Mileage not initialized. Calendar maintenance can still be tracked.",
+          "Record starting mileage. You can still track service by date.",
+        page: "mileage",
       });
     if (!assignments.data.some((a) => a.asset_id === asset.id))
       warnings.push({
         assetId: asset.id,
         name: asset.name,
         message: "No maintenance schedules assigned.",
+        page: "maintenance",
       });
   }
   return {
@@ -149,6 +157,7 @@ export async function getMaintenance(
       warnings,
       canManage: access.data.canManage && !vehicle?.archived_at,
       today,
+      organizationName: organization.data.name,
       vehicleName: vehicle?.name,
     },
   };
@@ -177,7 +186,7 @@ export async function saveMaintenance(
     if (error.code === "P0002")
       return {
         status: 404,
-        error: "Vehicle, template, or assignment not found.",
+        error: "Vehicle, template, or schedule not found.",
       };
     if (["40001", "23505"].includes(error.code))
       return {
@@ -206,7 +215,7 @@ export async function saveMaintenance(
       return {
         status: 400,
         error:
-          "Invalid maintenance details. Check intervals, windows, explicit targets, and initialized mileage with a matching unit.",
+          "Check how often service is needed, when it is next due, and the Upcoming and Due percentages. For distance-based service, record starting mileage first and use the vehicle’s distance unit.",
       };
     return { status: 500, error: "Unable to save maintenance." };
   }

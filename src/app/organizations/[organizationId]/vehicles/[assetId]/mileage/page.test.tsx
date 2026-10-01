@@ -56,9 +56,9 @@ test("shows separate physical and accumulated values and original/corrected evid
   expect(mocks.get).toHaveBeenCalledWith("org", "asset");
   for (const text of [
     "Van A",
-    "Physical odometer",
+    "Odometer reading",
     "10 mi",
-    "Accumulated usage",
+    "Total distance",
     "200 mi",
     "Broken",
     "Starting value typo",
@@ -69,7 +69,7 @@ test("shows separate physical and accumulated values and original/corrected evid
     "Correct",
   ])
     expect(html).toContain(text);
-  expect(html).not.toContain(">Void</button>");
+  expect(html).not.toContain(">Exclude reading</button>");
 });
 test("empty history offers initialization and explicit unit selection", async () => {
   mocks.get.mockResolvedValue({
@@ -79,10 +79,14 @@ test("empty history offers initialization and explicit unit selection", async ()
   const html = renderToStaticMarkup(await MileagePage(props));
   for (const text of [
     "No mileage recorded yet",
-    "Initial mileage",
+    "Starting mileage",
     "Miles",
     "Kilometers",
-    "Declared accumulated usage",
+    "Starting total distance",
+    "Includes distance from previous odometers",
+    'aria-describedby="starting-total-distance-help"',
+    'href="/organizations/org/vehicles/asset/maintenance"',
+    'href="/organizations/org/dashboard"',
   ])
     expect(html).toContain(text);
 });
@@ -93,7 +97,7 @@ test("read-only and archived access retain history without mutation controls", a
   });
   const html = renderToStaticMarkup(await MileagePage(props));
   expect(html).toContain("Mileage is read-only");
-  expect(html).toContain("Original entry and audit history");
+  expect(html).toContain("Change history");
   expect(html).not.toContain("<form");
   expect(html).not.toContain("<button");
 });
@@ -119,7 +123,7 @@ test("voided latest entry never becomes the current reading", async () => {
   const html = renderToStaticMarkup(await MileagePage(props));
   expect(html).toContain("<dd>10 mi</dd>");
   expect(html).not.toContain("<dd>999 mi</dd>");
-  expect(html).toContain("voided");
+  expect(html).toContain("excluded");
   expect(html).toContain("Correct and restore");
 });
 test("authentication, missing resources and load errors have explicit states", async () => {

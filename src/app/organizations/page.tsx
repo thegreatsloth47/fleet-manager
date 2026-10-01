@@ -29,7 +29,7 @@ export default async function OrganizationsPage() {
                   </a>
                   {" · "}
                   <a href={`/organizations/${organization.id}/dashboard`}>
-                    Maintenance dashboard
+                    Dashboard
                   </a>
                 </>
               )}
@@ -37,11 +37,11 @@ export default async function OrganizationsPage() {
           ))}
         </ul>
       ) : (
-        <p>You have no active organization memberships.</p>
+        <p>You do not have access to an organization yet.</p>
       )}
       <CreateOrganizationForm />
       <p>
-        <a href="/auth">Account and sign out</a>
+        <a href="/auth">Account</a>
       </p>
     </main>
   );

@@ -19,8 +19,24 @@ export default async function MileagePage({
         <Link href={`/organizations/${organizationId}/vehicles/${assetId}`}>
           Vehicle details
         </Link>
+        {" · "}
+        <Link
+          href={`/organizations/${organizationId}/vehicles/${assetId}/maintenance`}
+        >
+          Maintenance schedules
+        </Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/dashboard`}>
+          Dashboard
+        </Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
-      <h1>Mileage</h1>
+      <h1>
+        {result.data ? `${result.data.vehicleName} — Mileage` : "Mileage"}
+      </h1>
       {result.data ? (
         <MileagePanel
           organizationId={organizationId}

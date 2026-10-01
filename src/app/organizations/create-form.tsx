@@ -49,7 +49,7 @@ export default function CreateOrganizationForm() {
     <form onSubmit={submit}>
       <h2>Create an organization</h2>
       <label>
-        Name <input name="name" required maxLength={200} />
+        Organization name <input name="name" required maxLength={200} />
       </label>{" "}
       <button disabled={pending}>Create organization</button>
       <p role="status">{message}</p>

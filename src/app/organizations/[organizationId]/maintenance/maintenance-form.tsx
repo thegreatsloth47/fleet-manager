@@ -27,7 +27,7 @@ function RuleFields({ rule }: { rule: Rule }) {
         Use distance, calendar time, or both. Leave the unused interval blank.
       </p>
       <p>
-        <label htmlFor={`${id}-distance`}>Distance interval</label>
+        <label htmlFor={`${id}-distance`}>Distance between services</label>
         <br />
         <input
           id={`${id}-distance`}
@@ -49,7 +49,7 @@ function RuleFields({ rule }: { rule: Rule }) {
         </select>
       </p>
       <p>
-        <label htmlFor={`${id}-time`}>Calendar interval</label>
+        <label htmlFor={`${id}-time`}>Time between services</label>
         <br />
         <input
           id={`${id}-time`}
@@ -60,7 +60,7 @@ function RuleFields({ rule }: { rule: Rule }) {
           step="1"
           defaultValue={rule.time_interval ?? ""}
         />{" "}
-        <label htmlFor={`${id}-period`}>Calendar unit</label>{" "}
+        <label htmlFor={`${id}-period`}>Time unit</label>{" "}
         <select
           id={`${id}-period`}
           name="time_unit"
@@ -101,8 +101,11 @@ function RuleFields({ rule }: { rule: Rule }) {
         />
       </p>
       <p>
-        Due must not exceed upcoming. Calendar windows round up to whole days.
-        Combined schedules show the most urgent status.
+        These percentages set how early a schedule shows Upcoming or Due. For
+        example, for service every 5,000 miles, 10% means Upcoming with 500
+        miles left and 5% means Due with 250 miles left. The Due percentage
+        cannot exceed Upcoming. Time windows round up to whole days. When both
+        distance and time are set, the more urgent status is shown.
       </p>
     </>
   );
@@ -213,7 +216,7 @@ export default function MaintenanceForm({
           {assetId
             ? assignment
               ? "Edit vehicle schedule"
-              : "Assign a maintenance template"
+              : "Add a maintenance schedule"
             : template
               ? "Edit template"
               : "Create maintenance template"}
@@ -253,13 +256,13 @@ export default function MaintenanceForm({
         {assetId ? (
           <>
             <p>
-              Enter explicit targets for each interval in this schedule. Usage
-              is accumulated vehicle usage, including prior odometers. Leave
-              unused targets blank. These targets do not record completed
+              Enter when service is next due: total distance, date, or both.
+              Total distance includes distance from previous odometers. Leave
+              unused fields blank. Adding a schedule does not record completed
               service.
             </p>
             <p>
-              <label htmlFor={`${id}-usage`}>Next due accumulated usage</label>
+              <label htmlFor={`${id}-usage`}>Next due at</label>
               <br />
               <input
                 id={`${id}-usage`}
@@ -269,7 +272,8 @@ export default function MaintenanceForm({
                 max="999999999.9"
                 step="0.1"
                 defaultValue={assignment?.next_due_usage ?? ""}
-              />
+              />{" "}
+              {rule?.distance_unit}
             </p>
             <p>
               <label htmlFor={`${id}-date`}>Next due date</label>
@@ -312,7 +316,7 @@ export default function MaintenanceForm({
             : assetId
               ? assignment
                 ? "Save schedule"
-                : "Assign schedule"
+                : "Add schedule"
               : template
                 ? "Save template"
                 : "Create template"}

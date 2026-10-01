@@ -14,6 +14,14 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   const owner = await fixtures.user("owner");
   await signIn(page, owner);
   const organization = await createOrganization(page, fixtures, owner);
+  await page.goto(`/organizations/${organization}/vehicles`);
+  await page.getByRole("link", { name: "Add vehicle", exact: true }).click();
+  await page.getByLabel("Vehicle name or number").fill("Unsaved vehicle");
+  await page.getByRole("link", { name: "Cancel", exact: true }).click();
+  await expect(page).toHaveURL(`/organizations/${organization}/vehicles`);
+  await expect(
+    page.getByRole("link", { name: "Unsaved vehicle", exact: true }),
+  ).toHaveCount(0);
   const vin = `E2E-${crypto.randomUUID()}`.toUpperCase();
   const path = await createVehicle(
     page,
@@ -23,14 +31,19 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     vin.toLowerCase(),
   );
   await expect(page.getByLabel("VIN", { exact: true })).toHaveValue(vin);
+  await page.getByLabel("Vehicle name or number").fill("Unsaved edit");
+  await page.getByRole("link", { name: "Cancel", exact: true }).click();
+  await expect(page.getByLabel("Vehicle name or number")).toHaveValue(
+    `${fixtures.prefix}-van`,
+  );
   await page
-    .getByLabel("Display name/number")
+    .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-edited`);
   await page.getByLabel("Make", { exact: true }).fill("Ford");
   await page.getByLabel("Model", { exact: true }).fill("Transit");
   await page.getByLabel("Year", { exact: true }).fill("2024");
   await page.getByLabel("License plate", { exact: true }).fill("E2E-123");
-  await page.getByLabel("Plate jurisdiction").fill("MO");
+  await page.getByLabel("Registration state/province").fill("MO");
   // A saved textarea's text joins the wrapping label text after a reload.
   // Its accessible textbox name remains Description for both empty and saved values.
   const description = page.getByRole("textbox", {
@@ -46,7 +59,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
       r.request().method() === "PUT" &&
       r.url().endsWith(path.replace("/organizations/", "/api/organizations/")),
   );
-  await page.getByRole("button", { name: "Save vehicle" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
   expect((await saved).status()).toBe(200);
   await page.reload();
   await expect(
@@ -62,14 +75,14 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   await expect(description).toHaveValue("Isolated browser test vehicle");
   await description.fill("");
   const cleared = page.waitForResponse((r) => r.request().method() === "PUT");
-  await page.getByRole("button", { name: "Save vehicle" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
   expect((await cleared).status()).toBe(200);
   await page.reload();
   await expect(description).toHaveValue("");
 
   await page.goto(`/organizations/${organization}/vehicles/new`);
   await page
-    .getByLabel("Display name/number")
+    .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-edited`);
   {
     const rejected = page.waitForResponse(
@@ -77,12 +90,12 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
         response.request().method() === "POST" &&
         response.url().endsWith("/vehicles"),
     );
-    await page.getByRole("button", { name: "Save vehicle" }).click();
+    await page.getByRole("button", { name: "Add vehicle" }).click();
     expect((await rejected).status()).toBe(409);
     await expect(page.getByRole("status")).toContainText("already uses");
   }
   await page
-    .getByLabel("Display name/number")
+    .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-different`);
   await page.getByLabel("VIN", { exact: true }).fill(` ${vin.toLowerCase()} `);
   {
@@ -91,7 +104,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
         response.request().method() === "POST" &&
         response.url().endsWith("/vehicles"),
     );
-    await page.getByRole("button", { name: "Save vehicle" }).click();
+    await page.getByRole("button", { name: "Add vehicle" }).click();
     expect((await rejected).status()).toBe(409);
     await expect(page.getByRole("status")).toContainText("already uses");
   }
@@ -102,7 +115,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     .getByRole("button", { name: "Archive vehicle", exact: true })
     .click();
   await expect(page.getByText("Archived — read-only")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save vehicle" })).toHaveCount(
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
     0,
   );
   expect(
@@ -112,7 +125,9 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
       })
     ).status,
   ).toBe(409);
-  await page.getByRole("link", { name: "Vehicles", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Archived vehicles", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Archived vehicles" }),
   ).toBeVisible();
@@ -126,7 +141,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   await createVehicle(page, fixtures, organization, "edited"); // Archived display names can be reused.
   await page.goto(`/organizations/${organization}/vehicles/new`);
   await page
-    .getByLabel("Display name/number")
+    .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-reserved-vin`);
   await page.getByLabel("VIN", { exact: true }).fill(vin);
   {
@@ -135,7 +150,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
         response.request().method() === "POST" &&
         response.url().endsWith("/vehicles"),
     );
-    await page.getByRole("button", { name: "Save vehicle" }).click();
+    await page.getByRole("button", { name: "Add vehicle" }).click();
     expect((await rejected).status()).toBe(409);
     await expect(page.getByRole("status")).toContainText("already uses");
   }

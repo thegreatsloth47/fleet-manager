@@ -39,6 +39,7 @@ test("an empty attention list still displays actionable setup gaps", async () =>
       warnings: [
         {
           assetId: "vehicle",
+          page: "maintenance",
           name: "Van",
           message: "No maintenance schedules assigned.",
         },
@@ -50,3 +51,40 @@ test("an empty attention list still displays actionable setup gaps", async () =>
   expect(html).toContain("Finish setup");
   expect(html).toContain("/organizations/org/vehicles/vehicle/maintenance");
 });
+
+test.each([true, false])(
+  "setup links point directly to the relevant page (can manage: %s)",
+  async (canManage) => {
+    mocks.query.mockResolvedValue({
+      status: 200,
+      data: {
+        alerts: [],
+        today: "2026-09-24",
+        organizationName: "Acme Fleet",
+        canManage,
+        warnings: [
+          {
+            assetId: "van",
+            page: "mileage",
+            name: "Van A",
+            message: "Record starting mileage.",
+          },
+          {
+            assetId: "van",
+            page: "maintenance",
+            name: "Van A",
+            message: "No maintenance schedules assigned.",
+          },
+        ],
+      },
+    });
+    const html = renderToStaticMarkup(await DashboardPage({ params }));
+    expect(html).toContain("Acme Fleet");
+    expect(html).toContain(
+      `href="/organizations/org/vehicles/van/mileage">Van A — ${canManage ? "Record starting mileage" : "View mileage"}</a>`,
+    );
+    expect(html).toContain(
+      `href="/organizations/org/vehicles/van/maintenance">Van A — ${canManage ? "Add schedule" : "View maintenance schedules"}</a>`,
+    );
+  },
+);

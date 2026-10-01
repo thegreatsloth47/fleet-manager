@@ -15,11 +15,11 @@ export default function MaintenanceStatus({ item }: { item: MaintenanceItem }) {
       </p>
       {item.next_due_usage !== null && (
         <p>
-          Next due: {item.next_due_usage} {item.distance_unit} accumulated.
+          Next due: {item.next_due_usage} {item.distance_unit} total distance.
           {item.remainingUsage !== null &&
             ` ${Math.abs(item.remainingUsage)} ${item.distance_unit} ${item.remainingUsage < 0 ? "overdue" : "remaining"}.`}
           {item.usage !== null &&
-            ` Current accumulated usage: ${item.usage} ${item.distance_unit}.`}
+            ` Current total distance: ${item.usage} ${item.distance_unit}.`}
         </p>
       )}
       {item.next_due_date && (
@@ -30,11 +30,11 @@ export default function MaintenanceStatus({ item }: { item: MaintenanceItem }) {
         </p>
       )}
       {item.observedAt && item.distance_interval !== null && (
-        <p>Mileage last observed: {item.observedAt.slice(0, 10)}.</p>
+        <p>Last mileage reading: {item.observedAt.slice(0, 10)}.</p>
       )}
       {item.missingUsage && (
         <p role="alert">
-          Mileage unavailable; distance status cannot be evaluated.
+          Record mileage to see when distance-based service is due.
         </p>
       )}
     </>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getAccessibleOrganizations } from "@/modules/organizations/queries";
 import { getVehicles } from "@/modules/assets/queries";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ export default async function VehiclesPage({
   const result = await getVehicles(organizationId, { archived });
   if (result.status === 401) redirect("/auth");
   if (result.status === 404 || result.status === 400) notFound();
+  const organization = result.data
+    ? await getAccessibleOrganizations(organizationId)
+    : undefined;
   const path = `/organizations/${organizationId}/vehicles`;
   return (
     <main>
@@ -23,9 +27,16 @@ export default async function VehiclesPage({
         <Link href="/organizations">Organizations</Link>
         {" · "}
         <Link href={`/organizations/${organizationId}/dashboard`}>
-          Maintenance dashboard
+          Dashboard
         </Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/maintenance`}>
+          Maintenance templates
+        </Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
+      <p>{organization?.body.organizations?.[0]?.name}</p>
       <h1>{archived ? "Archived vehicles" : "Vehicles"}</h1>
       <p>
         <Link href={archived ? path : `${path}?archived=true`}>

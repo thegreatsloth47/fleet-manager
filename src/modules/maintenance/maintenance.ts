@@ -82,7 +82,7 @@ export function parseMaintenance(
   const invalid: MaintenanceResult<MaintenanceCommand> = {
     status: 400,
     error:
-      "Provide valid intervals, matching units, explicit targets, and windows with 0 ≤ due ≤ upcoming ≤ 100%.",
+      "Enter how often service is needed and when it is next due. Check the distance unit and use percentages between 0 and 100, with Due no higher than Upcoming.",
   };
   if (!input || typeof input !== "object" || Array.isArray(input))
     return invalid;

@@ -31,23 +31,29 @@ export default async function VehicleMaintenancePage({
         </Link>
         {" · "}
         <Link href={`/organizations/${organizationId}/dashboard`}>
-          Maintenance dashboard
+          Dashboard
         </Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/maintenance`}>
+        <Link
+          href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}`}
+        >
           Maintenance templates
         </Link>
         {" · "}
         <Link
           href={`/organizations/${organizationId}/vehicles/${assetId}/mileage`}
         >
-          Mileage and odometer history
+          Mileage
         </Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
-      <h1>{result.data.vehicleName} — maintenance</h1>
+      <h1>{result.data.vehicleName} — Maintenance schedules</h1>
       {!canManage && <p>Maintenance is read-only.</p>}
       {warnings
-        .filter((w) => w.message !== "No maintenance schedules assigned.")
+        .filter((w) => w.page === "mileage")
         .map((w) => (
           <p key={w.message}>{w.message}</p>
         ))}
@@ -78,7 +84,20 @@ export default async function VehicleMaintenancePage({
             templates={available}
           />
         ) : (
-          <p>Create or enable an unassigned template to add a schedule.</p>
+          <p>
+            <Link
+              href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}#new-template`}
+            >
+              Create a maintenance template
+            </Link>{" "}
+            to add another schedule, or{" "}
+            <Link
+              href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}`}
+            >
+              enable an existing template
+            </Link>
+            .
+          </p>
         ))}
     </main>
   );

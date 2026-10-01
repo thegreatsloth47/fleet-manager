@@ -28,22 +28,24 @@ async function createTemplate(
   distance?: string,
   time?: string,
   unit = "mi",
+  fromCurrentPage = false,
 ) {
-  await page.goto(`/organizations/${organization}/maintenance`);
+  if (!fromCurrentPage)
+    await page.goto(`/organizations/${organization}/maintenance`);
   const form = page.getByRole("group", {
     name: "Create maintenance template",
     exact: true,
   });
   await form.getByLabel("Service name").fill(name);
   if (distance) {
-    await form.getByLabel("Distance interval", { exact: true }).fill(distance);
+    await form
+      .getByLabel("Distance between services", { exact: true })
+      .fill(distance);
     await form.getByLabel("Distance unit", { exact: true }).selectOption(unit);
   }
   if (time) {
-    await form.getByLabel("Calendar interval", { exact: true }).fill(time);
-    await form
-      .getByLabel("Calendar unit", { exact: true })
-      .selectOption("days");
+    await form.getByLabel("Time between services", { exact: true }).fill(time);
+    await form.getByLabel("Time unit", { exact: true }).selectOption("days");
   }
   await saveForm(page, form, "Create template");
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
@@ -54,18 +56,19 @@ async function assign(
   name: string,
   usage?: string,
   date?: string,
+  fromCurrentPage = false,
 ) {
-  await page.goto(`${vehicle}/maintenance`);
+  if (!fromCurrentPage) await page.goto(`${vehicle}/maintenance`);
   const form = page.getByRole("group", {
-    name: "Assign a maintenance template",
+    name: "Add a maintenance schedule",
     exact: true,
   });
   await form
     .getByLabel("Maintenance template", { exact: true })
     .selectOption({ label: name });
-  if (usage) await form.getByLabel("Next due accumulated usage").fill(usage);
+  if (usage) await form.getByLabel("Next due at").fill(usage);
   if (date) await form.getByLabel("Next due date").fill(date);
-  await saveForm(page, form, "Assign schedule");
+  await saveForm(page, form, "Add schedule");
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 }
 function schedule(page: Page, name: string) {
@@ -88,17 +91,39 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await signIn(page, owner);
   const org = await createOrganization(page, fixtures, owner);
   const vehicle = await createVehicle(page, fixtures, org);
-  await page.goto(`${vehicle}/mileage`);
+  await page.getByRole("link", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("link", { name: /— Record starting mileage$/ }).click();
+  await expect(page).toHaveURL(`${vehicle}/mileage`);
+  await expect(
+    page.getByLabel("Starting total distance"),
+  ).toHaveAccessibleDescription(/Includes distance from previous odometers/);
   await saveMileage(page, { physical: "10000", observed: "2020-01-01T12:00" });
-  await createTemplate(page, org, "Oil", "1000");
-  await assign(page, vehicle, "Oil", "10100");
+  await page
+    .getByRole("link", { name: "Maintenance schedules", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Create a maintenance template", exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    new RegExp(`/organizations/${org}/maintenance\\?vehicle=.*#new-template$`),
+  );
+  await createTemplate(page, org, "Oil", "1000", undefined, "mi", true);
+  await page.getByRole("link", { name: /^Back to .+ maintenance$/ }).click();
+  await expect(page).toHaveURL(`${vehicle}/maintenance`);
+  await assign(page, vehicle, "Oil", "10100", undefined, true);
   await expect(
     schedule(page, "Oil").getByText("Upcoming", { exact: true }),
   ).toBeVisible();
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.getByRole("link", { name: "Dashboard", exact: true }).click();
   await expect(page.locator("ol > li")).toHaveCount(1);
   await expect(page.locator("ol > li")).toContainText("Upcoming");
-  await page.goto(`${vehicle}/mileage`);
+  const alert = page.locator("ol > li");
+  await expect(
+    alert.getByRole("link", { name: "Oil", exact: true }),
+  ).toHaveAttribute("href", `${vehicle}/maintenance`);
+  await alert.locator(`a[href="${vehicle}"]`).click();
+  await expect(page).toHaveURL(vehicle);
+  await page.getByRole("link", { name: "Mileage", exact: true }).click();
   await saveMileage(page, { physical: "10050", observed: "2020-01-02T12:00" });
   await page.goto(vehicle);
   await expect(schedule(page, "Maintenance")).toContainText("Due");
@@ -164,7 +189,7 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     }),
   ).toBeVisible();
   await schedule(page, "Oil")
-    .getByLabel("Distance interval", { exact: true })
+    .getByLabel("Distance between services", { exact: true })
     .fill("2000");
   await schedule(page, "Oil").getByLabel("Template enabled").uncheck();
   await saveForm(page, schedule(page, "Oil"), "Save template", 200);
@@ -188,11 +213,13 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     .getByText("Edit schedule", { exact: true })
     .click();
   await expect(
-    schedule(page, "Oil").getByLabel("Distance interval", { exact: true }),
+    schedule(page, "Oil").getByLabel("Distance between services", {
+      exact: true,
+    }),
   ).toHaveValue("1000");
-  await expect(
-    schedule(page, "Oil").getByLabel("Next due accumulated usage"),
-  ).toHaveValue("10100");
+  await expect(schedule(page, "Oil").getByLabel("Next due at")).toHaveValue(
+    "10100",
+  );
   await page.goto(vehicle);
   page.once("dialog", (dialog) => dialog.accept());
   await page
@@ -261,9 +288,7 @@ test("calendar-only schedules need no meter; combined schedules choose the earli
   await schedule(page, "Combined")
     .getByLabel("Next due date")
     .fill(dateOffset(50));
-  await schedule(page, "Combined")
-    .getByLabel("Next due accumulated usage")
-    .fill("9999");
+  await schedule(page, "Combined").getByLabel("Next due at").fill("9999");
   await saveForm(page, schedule(page, "Combined"), "Save schedule", 200);
   await expect(schedule(page, "Combined")).toContainText("1 km overdue");
   await page.reload();

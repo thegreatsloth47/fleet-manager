@@ -2,8 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  organizations: vi.fn(),
   access: vi.fn(),
   maintenance: vi.fn(),
+}));
+vi.mock("@/modules/organizations/queries", () => ({
+  getAccessibleOrganizations: mocks.organizations,
 }));
 vi.mock("@/modules/maintenance/service", () => ({
   getMaintenance: mocks.maintenance,
@@ -44,6 +48,10 @@ const vehicle = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.organizations.mockResolvedValue({
+    status: 200,
+    body: { organizations: [{ name: "Acme Fleet" }] },
+  });
   mocks.maintenance.mockResolvedValue({ status: 200, data: { items: [] } });
   mocks.get.mockResolvedValue({
     status: 200,
@@ -54,6 +62,9 @@ beforeEach(() => {
 test("owners can navigate the list, inspect details, edit and archive", async () => {
   const list = renderToStaticMarkup(await VehiclesPage(props));
   expect(list).toContain("Add vehicle");
+  expect(list).toContain("Acme Fleet");
+  expect(mocks.organizations).toHaveBeenCalledWith("org-a");
+  expect(list).toContain("/organizations/org-a/maintenance");
   expect(list).toContain("/organizations/org-a/vehicles/asset-a");
   const detail = renderToStaticMarkup(await VehiclePage(props));
   for (const value of [
@@ -82,7 +93,7 @@ test("read-only members see no write controls", async () => {
   );
   const detail = renderToStaticMarkup(await VehiclePage(props));
   expect(detail).toContain("VIN-A");
-  expect(detail).toContain("Manage or view maintenance");
+  expect(detail).toContain("Maintenance schedules");
   expect(detail).not.toContain("Vehicle editor");
   expect(detail).not.toContain("Archive vehicle");
   mocks.access.mockResolvedValue({ status: 403, error: "Access denied" });
@@ -99,7 +110,7 @@ test("archived vehicles remain visible and read-only for owners", async () => {
   const detail = renderToStaticMarkup(await VehiclePage(props));
   expect(detail).toContain("Archived — read-only");
   expect(detail).toContain("VIN-A");
-  expect(detail).toContain("Manage or view maintenance");
+  expect(detail).toContain("Maintenance schedules");
   expect(detail).not.toContain("Vehicle editor");
   expect(detail).not.toContain("Archive vehicle");
 });

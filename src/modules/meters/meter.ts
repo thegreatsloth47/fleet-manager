@@ -58,7 +58,7 @@ export function parseMeterCommand(
       typeof value !== "string" ||
       value.includes("\0")
     )
-      return { status: 400, error: "Invalid mileage field." };
+      return { status: 400, error: "Check the mileage details and try again." };
     data[key] = value;
   }
   const action = data.action;
@@ -66,7 +66,7 @@ export function parseMeterCommand(
     !uuid.test(data.command_id ?? "") ||
     !["baseline", "reading", "replacement", "correct", "void"].includes(action)
   )
-    return { status: 400, error: "Invalid mileage command." };
+    return { status: 400, error: "Unable to save these mileage details." };
   const reason = data.reason?.trim();
   if (
     (data.reason !== undefined && !reason) ||
@@ -140,7 +140,8 @@ export function parseMeterCommand(
     )
       return {
         status: 400,
-        error: "Provide the baseline or old meter final reading.",
+        error:
+          "Enter the starting total distance or the old odometer’s final reading.",
       };
     if (
       (action !== "baseline" &&
@@ -159,7 +160,7 @@ export function parseMeterCommand(
       return {
         status: 400,
         error:
-          "Accumulated baseline cannot be lower than the physical reading; explain any higher value.",
+          "Starting total distance cannot be lower than the odometer reading. Explain any higher total in the notes.",
       };
   }
   // Build the discriminant explicitly after validation, without asserting input types.
@@ -207,9 +208,9 @@ export function auditLines(audit: string): string[] {
       if (!item || typeof item !== "object")
         return "Audit details unavailable.";
       const fields: [string, string][] = [
-        ["physical", "Physical reading"],
+        ["physical", "Odometer reading"],
         ["old_final", "Old meter final"],
-        ["baseline_usage", "Declared accumulated baseline"],
+        ["baseline_usage", "Starting total distance"],
         ["reason", "Reason"],
         ["actor", "User ID"],
         ["recorded_at", "Recorded at"],
@@ -219,7 +220,7 @@ export function auditLines(audit: string): string[] {
         const value: unknown = Reflect.get(item, key);
         return typeof value === "string" ? [`${label}: ${value}`] : [];
       });
-      return `${index === 0 ? "Original entry" : Reflect.get(item, "voided") === true ? "Void" : "Correction"}\n${values.join("\n")}`;
+      return `${index === 0 ? "Original entry" : Reflect.get(item, "voided") === true ? "Excluded reading" : "Correction"}\n${values.join("\n")}`;
     },
   );
 }

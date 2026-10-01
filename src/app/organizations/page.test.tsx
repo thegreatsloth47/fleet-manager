@@ -40,7 +40,7 @@ test("renders only organizations returned by the authorized server query", async
 test("shows the empty membership state after revocation is revalidated", async () => {
   mocks.query.mockResolvedValue({ status: 200, body: { organizations: [] } });
   expect(renderToStaticMarkup(await OrganizationsPage())).toContain(
-    "You have no active organization memberships.",
+    "You do not have access to an organization yet.",
   );
 });
 

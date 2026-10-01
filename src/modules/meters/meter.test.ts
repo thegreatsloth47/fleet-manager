@@ -123,7 +123,7 @@ test("audit presents original evidence and every correction and void", () => {
     }),
   );
   expect(lines).toHaveLength(3);
-  expect(lines[0]).toContain("Original entry\nPhysical reading: 100");
-  expect(lines[1]).toContain("Correction\nPhysical reading: 110");
-  expect(lines[2]).toContain("Void\nPhysical reading: 110");
+  expect(lines[0]).toContain("Original entry\nOdometer reading: 100");
+  expect(lines[1]).toContain("Correction\nOdometer reading: 110");
+  expect(lines[2]).toContain("Excluded reading\nOdometer reading: 110");
 });

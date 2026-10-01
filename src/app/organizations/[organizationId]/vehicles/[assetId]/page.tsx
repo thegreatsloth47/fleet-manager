@@ -30,15 +30,21 @@ export default async function VehiclePage({
         <Link
           href={`/organizations/${organizationId}/vehicles${vehicle.archived_at ? "?archived=true" : ""}`}
         >
-          Vehicles
+          {vehicle.archived_at ? "Archived vehicles" : "Vehicles"}
         </Link>
+        {" · "}
+        <Link href={`/organizations/${organizationId}/dashboard`}>
+          Dashboard
+        </Link>
+        {" · "}
+        <Link href="/auth">Account</Link>
       </p>
       <h1>{vehicle.name}</h1>
       <p>
         <Link
           href={`/organizations/${organizationId}/vehicles/${assetId}/mileage`}
         >
-          Mileage and odometer history
+          Mileage
         </Link>
       </p>
       <section>
@@ -47,7 +53,7 @@ export default async function VehiclePage({
           <Link
             href={`/organizations/${organizationId}/vehicles/${assetId}/maintenance`}
           >
-            Manage or view maintenance
+            Maintenance schedules
           </Link>
         </p>
         {maintenance.error && <p role="alert">{maintenance.error}</p>}
@@ -72,7 +78,7 @@ export default async function VehiclePage({
             ["year", "Year"],
             ["vin", "VIN"],
             ["plate", "License plate"],
-            ["jurisdiction", "Plate jurisdiction"],
+            ["jurisdiction", "Registration state/province"],
             ["description", "Description"],
           ] as const
         ).map(([key, label]) => (

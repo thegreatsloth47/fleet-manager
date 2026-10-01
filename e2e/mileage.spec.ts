@@ -18,9 +18,7 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
   await signIn(page, owner);
   const organization = await createOrganization(page, fixtures, owner);
   const vehicle = await createVehicle(page, fixtures, organization);
-  await page
-    .getByRole("link", { name: "Mileage and odometer history" })
-    .click();
+  await page.getByRole("link", { name: "Mileage" }).click();
   await expect(page.getByText("No mileage recorded yet.")).toBeVisible();
   await expect(
     page.getByRole("combobox", { name: "Unit", exact: true }),
@@ -70,25 +68,27 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
     reason: "Correct final reading typo",
   });
   await usage(page, "1010", "260");
-  await firstReplacement.getByText("Original entry and audit history").click();
+  await firstReplacement.getByText("Change history").click();
   await expect(firstReplacement).toContainText("Old meter final: 200");
   await expect(firstReplacement).toContainText("Old meter final: 210");
   await expect(firstReplacement).toContainText("Correct final reading typo");
   const latest = page.locator("ol > li").filter({ hasText: "2020-01-07" });
-  await latest.getByRole("button", { name: "Void", exact: true }).click();
+  await latest
+    .getByRole("button", { name: "Exclude reading", exact: true })
+    .click();
   await saveMileage(page, { reason: "Wrong vehicle" });
   await usage(page, "1000", "250");
-  await expect(latest).toContainText("voided");
+  await expect(latest).toContainText("excluded");
   await latest.getByRole("button", { name: "Correct and restore" }).click();
   await saveMileage(page, {
     physical: "1020",
     reason: "Verified correct vehicle and value",
   });
   await usage(page, "1020", "270");
-  await latest.getByText("Original entry and audit history").click();
-  await expect(latest).toContainText("Physical reading: 1010");
+  await latest.getByText("Change history").click();
+  await expect(latest).toContainText("Odometer reading: 1010");
   await expect(latest).toContainText("Wrong vehicle");
-  await expect(latest).toContainText("Physical reading: 1020");
+  await expect(latest).toContainText("Odometer reading: 1020");
   await latest.getByRole("button", { name: "Correct", exact: true }).click();
   await saveMileage(
     page,
@@ -133,9 +133,7 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
     .getByRole("button", { name: "Archive vehicle", exact: true })
     .click();
   await expect(page.getByText("Archived — read-only")).toBeVisible();
-  await page
-    .getByRole("link", { name: "Mileage and odometer history" })
-    .click();
+  await page.getByRole("link", { name: "Mileage" }).click();
   await usage(page, "1020", "270");
   await expect(page.getByText("Mileage is read-only.")).toBeVisible();
   await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
@@ -156,9 +154,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   await signIn(page, owner);
   const organization = await createOrganization(page, fixtures, owner);
   const vehicle = await createVehicle(page, fixtures, organization);
-  await page
-    .getByRole("link", { name: "Mileage and odometer history" })
-    .click();
+  await page.getByRole("link", { name: "Mileage" }).click();
   await page
     .getByRole("combobox", { name: "Unit", exact: true })
     .selectOption("km");
@@ -196,7 +192,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   await usage(page, "0.3", "510.5", "km");
   const baseline = page
     .locator("ol > li")
-    .filter({ hasText: "Initial baseline" });
+    .filter({ hasText: "Starting reading" });
   await baseline.getByRole("button", { name: "Correct", exact: true }).click();
   await saveMileage(page, {
     physical: "10.1",
@@ -206,7 +202,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   await usage(page, "0.3", "610.5", "km");
   const replacement = page
     .locator("ol > li")
-    .filter({ hasText: "Physical replacement/reset" });
+    .filter({ hasText: "Odometer replacement" });
   await replacement
     .getByRole("button", { name: "Correct", exact: true })
     .click();
@@ -216,7 +212,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
     reason: "Correct new physical starting value",
   });
   await usage(page, "0.3", "610.4", "km");
-  await replacement.getByText("Original entry and audit history").click();
-  await expect(replacement).toContainText("Physical reading: 0.1");
-  await expect(replacement).toContainText("Physical reading: 0.2");
+  await replacement.getByText("Change history").click();
+  await expect(replacement).toContainText("Odometer reading: 0.1");
+  await expect(replacement).toContainText("Odometer reading: 0.2");
 });

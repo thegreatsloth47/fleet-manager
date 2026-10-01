@@ -77,7 +77,7 @@ export default function VehicleForm({
         <legend>{vehicle ? "Edit vehicle" : "Add vehicle"}</legend>
         <p>
           <label>
-            Display name/number{" "}
+            Vehicle name or number{" "}
             <input
               name="name"
               required
@@ -101,7 +101,7 @@ export default function VehicleForm({
             ["model", "Model"],
             ["vin", "VIN"],
             ["plate", "License plate"],
-            ["jurisdiction", "Plate jurisdiction"],
+            ["jurisdiction", "Registration state/province"],
           ] as const
         ).map(([name, label]) => (
           <p key={name}>
@@ -138,8 +138,13 @@ export default function VehicleForm({
             />
           </label>
         </p>
-        <button>{pending ? "Saving…" : "Save vehicle"}</button>
+        <button>
+          {pending ? "Saving…" : vehicle ? "Save changes" : "Add vehicle"}
+        </button>
       </fieldset>
+      <p>
+        <a href={vehicle ? `${path}/${vehicle.id}` : path}>Cancel</a>
+      </p>
       <p role="status">{message}</p>
     </form>
   );

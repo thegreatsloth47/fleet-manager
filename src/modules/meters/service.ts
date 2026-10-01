@@ -77,7 +77,7 @@ export async function recordMileage(
       return {
         status: 400,
         error:
-          "Invalid mileage history. Check neighboring readings, baseline values, replacement final reading, and observation time.",
+          "Unable to save this reading. Check the earlier and later readings, starting total distance, old odometer’s final reading, and reading date and time.",
       };
     return { status: 500, error: "Unable to record mileage." };
   }
