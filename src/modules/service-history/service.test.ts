@@ -132,6 +132,7 @@ test("write authorization and a tenant-scoped atomic command are required", asyn
   ).toBe(200);
 });
 test.each([
+  ["PT409", 409],
   ["40001", 409],
   ["23505", 409],
   ["23514", 400],
@@ -146,4 +147,51 @@ test.each([
 test("failed mileage review does not silently show history as consistent", async () => {
   mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000" } });
   expect((await getServiceHistory(org, asset)).status).toBe(500);
+});
+
+test("PostgREST PT409 rejects a selected backdated effect without retrying or dropping schedules", async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const backend = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        code: "PT409",
+        message:
+          "Backdated service cannot overwrite later maintenance; save without schedule effects",
+        details: null,
+        hint: null,
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    ),
+  );
+  const client = createClient("https://fixture.invalid", "test-only-key", {
+    global: { fetch: backend },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  mocks.rpc.mockImplementation((name, args) => client.rpc(name, args));
+  const command = {
+    ...input,
+    service_date: "2020-01-15",
+    total_distance: "10500",
+    schedule_ids: [org],
+  };
+  const result = await saveService(org, asset, command);
+  expect(result.status).toBe(409);
+  expect(result.error).toContain("later service/manual change");
+  expect(backend).toHaveBeenCalledOnce();
+  expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("save_service", {
+    target_organization_id: org,
+    target_asset_id: asset,
+    payload: command,
+  });
+});
+test("a gateway timeout remains a server error, never an invented business conflict", async () => {
+  mocks.rpc.mockResolvedValue({
+    data: null,
+    error: { message: "upstream request timeout" },
+  });
+  expect((await saveService(org, asset, input)).status).toBe(500);
 });

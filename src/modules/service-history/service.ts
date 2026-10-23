@@ -112,7 +112,7 @@ export async function saveService(
       return { status: 403, error: "Service management access required." };
     if (error.code === "P0002")
       return { status: 404, error: "Vehicle, service, or schedule not found." };
-    if (["40001", "23505"].includes(error.code))
+    if (["PT409", "40001", "23505"].includes(error.code))
       return {
         status: 409,
         error:

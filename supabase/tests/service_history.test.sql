@@ -36,7 +36,7 @@ select is((select next_due_date::text from public.maintenance_assignments where 
 select is((select count(*)::integer from public.service_schedule_effects),3,'Each target change has an audit entry');
 select lives_ok($$select pg_temp.service(2,'{"total_distance":"10500","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001","eeeeeeee-0000-4000-8000-000000000002","eeeeeeee-0000-4000-8000-000000000003"]}')$$,'Retry is idempotent');
 select is((select count(*)::integer from public.service_schedule_effects),3,'Retry cannot advance twice');
-select throws_ok($$select pg_temp.service(2,'{"title":"Different"}')$$,'40001',null,'Command reuse with changed input rejected');
+select throws_ok($$select pg_temp.service(2,'{"title":"Different"}')$$,'PT409',null,'Command reuse with changed input rejected');
 select lives_ok($$select pg_temp.service(2,'{"expected_version":1,"reason":"Correct date and mileage","service_date":"2020-03-01","total_distance":"11000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001","eeeeeeee-0000-4000-8000-000000000002","eeeeeeee-0000-4000-8000-000000000003"]}')$$,'Latest service correction reverses then reapplies effects');
 select is((select next_due_usage from public.maintenance_assignments where name='Oil'),12000::numeric,'Correction recalculates mileage');
 select is((select next_due_date::text from public.maintenance_assignments where name='Inspection'),'2020-09-01','Correction recalculates time');
@@ -44,14 +44,23 @@ select lives_ok($$select pg_temp.void_service(2,2)$$,'Latest service can be void
 select is((select next_due_usage from public.maintenance_assignments where name='Oil'),10500::numeric,'Void restores original target');
 select is((select count(*)::integer from public.service_schedule_effects),12,'Apply, reversal, correction, and void audit retained');
 select ok((select voided from public.service_records where id='f0000000-0000-4000-8000-000000000002'),'Voided record retained');
-select throws_ok($$select pg_temp.void_service(2,3)$$,'40001',null,'Voided records cannot be mutated again');
+select throws_ok($$select pg_temp.void_service(2,3)$$,'PT409',null,'Voided records cannot be mutated again');
 select lives_ok($$select pg_temp.service(3,'{"service_date":"2020-04-01","total_distance":"12000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'First subsequent completion');
 select lives_ok($$select pg_temp.service(4,'{"service_date":"2020-06-01","total_distance":"14000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'Later completion');
-select throws_ok($$select pg_temp.void_service(3,1)$$,'40001',null,'Older service cannot undo later completion');
-select throws_ok($$select pg_temp.service(3,'{"expected_version":1,"reason":"Remove effect","service_date":"2020-04-01","total_distance":"12000"}')$$,'40001',null,'Removing older effect cannot corrupt history');
+select throws_ok($$select pg_temp.void_service(3,1)$$,'PT409',null,'Older service cannot undo later completion');
+select throws_ok($$select pg_temp.service(3,'{"expected_version":1,"reason":"Remove effect","service_date":"2020-04-01","total_distance":"12000"}')$$,'PT409',null,'Removing older effect cannot corrupt history');
 select lives_ok($$select pg_temp.service(3,'{"expected_version":1,"reason":"Shop spelling","provider":"Shop","service_date":"2020-04-01","total_distance":"12000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'Descriptive edits remain possible after later completion');
-select throws_ok($$select pg_temp.service(5,'{"service_date":"2020-05-01","total_distance":"13000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'40001',null,'Backdated completion cannot overwrite later service');
+create temporary table before_backdated_conflict as
+  select (select count(*) from public.service_records) as records,
+    (select count(*) from public.service_revisions) as revisions,
+    (select count(*) from public.service_schedule_effects) as effects,
+    (select version from public.maintenance_assignments where name='Oil') as schedule_version;
+select throws_ok($$select pg_temp.service(5,'{"service_date":"2020-05-01","total_distance":"13000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'PT409','Backdated service cannot overwrite later maintenance; save without schedule effects','Backdated completion cannot overwrite later service without asking PostgREST to retry');
 select is((select count(*)::integer from public.service_records where id='f0000000-0000-4000-8000-000000000005'),0,'Rejected completion leaves no partial record');
+select is((select count(*) from public.service_records),(select records from before_backdated_conflict),'Conflict rolls back the service record');
+select is((select count(*) from public.service_revisions),(select revisions from before_backdated_conflict),'Conflict rolls back the audit revision');
+select is((select count(*) from public.service_schedule_effects),(select effects from before_backdated_conflict),'Conflict leaves prior effect history intact');
+select is((select version from public.maintenance_assignments where name='Oil'),(select schedule_version from before_backdated_conflict),'Conflict leaves schedule version intact');
 select lives_ok($$select pg_temp.service(5,'{"service_date":"2020-05-01","total_distance":"13000"}')$$,'Same historical service can be saved without effects');
 select is((select next_due_usage from public.maintenance_assignments where name='Oil'),15000::numeric,'Later service target preserved');
 select throws_ok($$select pg_temp.service(6,'{"total_distance":"9999"}')$$,'23514',null,'Historical distance below prior reading rejected');
@@ -107,15 +116,15 @@ select throws_ok($$select pg_temp.service(8)$$,'42501',null,'Revoked member cann
 select set_config('request.jwt.claims','{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}',true);
 select lives_ok($$select pg_temp.service(8,'{"cost_cents":12345,"provider":"Local shop"}')$$,'Admin can create service');
 select lives_ok($$select pg_temp.service(8,'{"expected_version":1,"reason":"Correct title","title":"Repaired"}')$$,'Admin can edit service');
-select throws_ok($$select pg_temp.service(8,'{"expected_version":1,"reason":"Stale edit"}')$$,'40001',null,'Stale service edits rejected');
+select throws_ok($$select pg_temp.service(8,'{"expected_version":1,"reason":"Stale edit"}')$$,'PT409',null,'Stale service edits rejected');
 reset role;
 update public.maintenance_assignments set version=version+1, updated_at=now(), next_due_usage=17000 where name='Oil';
 set local role authenticated;
-select throws_ok($$select pg_temp.void_service(4,1)$$,'40001',null,'Manual schedule change prevents service reversal');
-select throws_ok($$select pg_temp.service(9,'{"service_date":"2020-07-01","total_distance":"16000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'40001',null,'Backdated service cannot overwrite a subsequent manual change');
+select throws_ok($$select pg_temp.void_service(4,1)$$,'PT409',null,'Manual schedule change prevents service reversal');
+select throws_ok($$select pg_temp.service(9,'{"service_date":"2020-07-01","total_distance":"16000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'PT409',null,'Backdated service cannot overwrite a subsequent manual change');
 select lives_ok($$select pg_temp.service(12,jsonb_build_object('service_date',(now() at time zone (select timezone from public.organizations where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'))::date::text,'total_distance','30000','schedule_ids',jsonb_build_array('eeeeeeee-0000-4000-8000-000000000001')))$$,'Current service can advance a manually edited schedule');
 select lives_ok($$select pg_temp.void_service(12,1)$$,'Latest completion reverses to manual target');
-select throws_ok($$select pg_temp.service(13,'{"service_date":"2020-07-01","total_distance":"16000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'40001',null,'Reversal does not erase the historical manual-change barrier');
+select throws_ok($$select pg_temp.service(13,'{"service_date":"2020-07-01","total_distance":"16000","schedule_ids":["eeeeeeee-0000-4000-8000-000000000001"]}')$$,'PT409',null,'Reversal does not erase the historical manual-change barrier');
 select is((select next_due_usage from public.maintenance_assignments where name='Oil'),17000::numeric,'Restored manual target remains protected');
 select lives_ok($$select public.record_meter_command('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-0000-4000-8000-000000000001','{"command_id":"cccccccc-0000-4000-8000-000000000004","action":"replacement","observed_at":"2021-01-01T12:00:00Z","physical":"100","old_final":"21000","reason":"New odometer"}')$$,'Replacement preserves logical accumulated distance');
 select lives_ok($$select public.record_meter_command('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-0000-4000-8000-000000000001','{"command_id":"cccccccc-0000-4000-8000-000000000005","action":"reading","observed_at":"2021-02-01T12:00:00Z","physical":"1100"}')$$,'Post-replacement reading recorded');

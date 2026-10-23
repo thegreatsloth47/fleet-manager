@@ -58,7 +58,40 @@ async function saveServiceForm(page: Page, status = 201) {
       r.url().endsWith("/service-history") && r.request().method() === "POST",
   );
   await page.getByRole("button", { name: "Save service", exact: true }).click();
-  expect((await response).status()).toBe(status);
+  const saved = await response;
+  if (saved.status() !== status) {
+    const input: unknown = saved.request().postDataJSON();
+    const command =
+      input && typeof input === "object"
+        ? Object.fromEntries(
+            Object.entries(input).filter(([key]) =>
+              [
+                "command_id",
+                "id",
+                "action",
+                "expected_version",
+                "service_date",
+                "total_distance",
+                "schedule_ids",
+              ].includes(key),
+            ),
+          )
+        : null;
+    await test.info().attach("failed-service-command", {
+      body: JSON.stringify(
+        {
+          path: new URL(saved.url()).pathname,
+          command,
+          status: saved.status(),
+          response: await saved.text(),
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    });
+  }
+  expect(saved.status()).toBe(status);
 }
 
 test("completed service advances selected schedules and rejects conflicting backdated effects", async ({
@@ -116,7 +149,29 @@ test("completed service advances selected schedules and rejects conflicting back
   await page.getByLabel("Service title").fill("Older service");
   await page.getByLabel("Total distance at service (mi)").fill("10500");
   await page.getByRole("checkbox", { name: "Combined", exact: true }).check();
+  const beforeConflict = await browserRequest(
+    page,
+    `/api${vehicle}/service-history`,
+  );
+  expect(beforeConflict.status).toBe(200);
   await saveServiceForm(page, 409);
+  const afterConflict = await browserRequest(
+    page,
+    `/api${vehicle}/service-history`,
+  );
+  expect(afterConflict.status).toBe(200);
+  if (
+    !beforeConflict.body ||
+    typeof beforeConflict.body !== "object" ||
+    !afterConflict.body ||
+    typeof afterConflict.body !== "object"
+  )
+    throw new Error("Expected service history responses");
+  for (const key of ["records", "revisions", "effects"]) {
+    expect(Reflect.get(afterConflict.body, key)).toEqual(
+      Reflect.get(beforeConflict.body, key),
+    );
+  }
   await expect(page.getByRole("status")).toContainText(
     "later service/manual change",
   );
