@@ -16,6 +16,9 @@ type DeletionPlan = {
   revisionIds: string[];
   templateIds?: string[];
   assignmentIds?: string[];
+  serviceIds?: string[];
+  serviceRevisionIds?: string[];
+  serviceEffectIds?: string[];
   memberships: { organization_id: string; user_id: string }[];
 };
 type Manifest = {
@@ -114,6 +117,9 @@ export class Fixtures {
       "meter_revisions",
       "maintenance_templates",
       "maintenance_assignments",
+      "service_records",
+      "service_revisions",
+      "service_schedule_effects",
     ] as const) {
       const { error } = await this.client.from(table).select("*").limit(0);
       if (error)
@@ -347,6 +353,54 @@ export class Fixtures {
         )
       )
         throw new Error("Unexpected maintenance records; cleanup stopped.");
+      const { data: services, error: serviceError } = await this.client
+        .from("service_records")
+        .select("id,asset_id,updated_by")
+        .in("organization_id", orgIds);
+      const { data: serviceRevisions, error: serviceRevisionError } =
+        await this.client
+          .from("service_revisions")
+          .select("id,asset_id,service_id,actor_id")
+          .in("organization_id", orgIds);
+      const { data: serviceEffects, error: serviceEffectError } =
+        await this.client
+          .from("service_schedule_effects")
+          .select("id,asset_id,service_id,revision_id,schedule_id")
+          .in("organization_id", orgIds);
+      if (
+        serviceError ||
+        serviceRevisionError ||
+        serviceEffectError ||
+        services.some(
+          (row) =>
+            !userIds.includes(row.updated_by) ||
+            !assets.some((asset) => asset.id === row.asset_id),
+        ) ||
+        serviceRevisions.some(
+          (row) =>
+            !userIds.includes(row.actor_id) ||
+            !services.some(
+              (service) =>
+                service.id === row.service_id &&
+                service.asset_id === row.asset_id,
+            ),
+        ) ||
+        serviceEffects.some(
+          (row) =>
+            !serviceRevisions.some(
+              (revision) =>
+                revision.id === row.revision_id &&
+                revision.service_id === row.service_id &&
+                revision.asset_id === row.asset_id,
+            ) ||
+            !assignments.some(
+              (assignment) =>
+                assignment.id === row.schedule_id &&
+                assignment.asset_id === row.asset_id,
+            ),
+        )
+      )
+        throw new Error("Unexpected service history; cleanup stopped.");
       const inventory: DeletionPlan = {
         organizationIds: orgIds,
         assetIds: assets.map((row) => row.id),
@@ -355,6 +409,9 @@ export class Fixtures {
         revisionIds: revisions.map((row) => row.id),
         templateIds: templates.map((row) => row.id),
         assignmentIds: assignments.map((row) => row.id),
+        serviceIds: services.map((row) => row.id),
+        serviceRevisionIds: serviceRevisions.map((row) => row.id),
+        serviceEffectIds: serviceEffects.map((row) => row.id),
         memberships,
       };
       if (this.manifest.deletionPlan) {
@@ -367,6 +424,9 @@ export class Fixtures {
           "revisionIds",
           "templateIds",
           "assignmentIds",
+          "serviceIds",
+          "serviceRevisionIds",
+          "serviceEffectIds",
         ] as const)
           if (
             (inventory[key] ?? []).some(
@@ -397,6 +457,9 @@ export class Fixtures {
       // boundary. New or unrelated records are never swept up by recovery.
       const plan = this.manifest.deletionPlan;
       for (const [table, ids] of [
+        ["service_schedule_effects", plan.serviceEffectIds ?? []],
+        ["service_revisions", plan.serviceRevisionIds ?? []],
+        ["service_records", plan.serviceIds ?? []],
         ["maintenance_assignments", plan.assignmentIds ?? []],
         ["maintenance_templates", plan.templateIds ?? []],
         ["meter_revisions", plan.revisionIds],
@@ -519,11 +582,20 @@ export function validManifest(value: unknown): value is Manifest {
       "revisionIds",
       "templateIds",
       "assignmentIds",
+      "serviceIds",
+      "serviceRevisionIds",
+      "serviceEffectIds",
     ]) {
       const ids: unknown = Reflect.get(plan, key);
-      // Older recovery manifests predate maintenance fixtures.
+      // Older recovery manifests predate maintenance and service fixtures.
       if (
-        (key === "templateIds" || key === "assignmentIds") &&
+        [
+          "templateIds",
+          "assignmentIds",
+          "serviceIds",
+          "serviceRevisionIds",
+          "serviceEffectIds",
+        ].includes(key) &&
         ids === undefined
       )
         continue;

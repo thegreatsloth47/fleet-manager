@@ -1,4 +1,10 @@
 import type {
+  ServiceRecord,
+  ServiceRevision,
+  ScheduleEffect,
+  ServiceCommand,
+} from "@/modules/service-history/service-history";
+import type {
   Template,
   Assignment,
   MaintenanceCommand,
@@ -17,6 +23,24 @@ type Json =
 export type Database = {
   public: {
     Tables: {
+      service_records: {
+        Row: ServiceRecord;
+        Insert: ServiceRecord;
+        Update: Partial<ServiceRecord>;
+        Relationships: [];
+      };
+      service_revisions: {
+        Row: ServiceRevision & { request_payload: Json };
+        Insert: ServiceRevision & { request_payload: Json };
+        Update: Partial<ServiceRevision>;
+        Relationships: [];
+      };
+      service_schedule_effects: {
+        Row: ScheduleEffect;
+        Insert: ScheduleEffect;
+        Update: Partial<ScheduleEffect>;
+        Relationships: [];
+      };
       maintenance_templates: {
         Row: Template;
         Insert: Omit<Template, "version" | "updated_at"> & {
@@ -338,6 +362,27 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      save_service: {
+        Args: {
+          target_organization_id: string;
+          target_asset_id: string;
+          payload: ServiceCommand;
+        };
+        Returns: string;
+      };
+      service_distance_valid: {
+        Args: {
+          target_organization_id: string;
+          target_asset_id: string;
+          target_date: string;
+          distance: number | null;
+        };
+        Returns: boolean;
+      };
+      service_mileage_reviews: {
+        Args: { target_organization_id: string; target_asset_id: string };
+        Returns: { id: string; inconsistent: boolean }[];
+      };
       save_maintenance: {
         Args: {
           target_organization_id: string;

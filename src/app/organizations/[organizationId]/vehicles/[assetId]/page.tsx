@@ -46,6 +46,12 @@ export default async function VehiclePage({
         >
           Mileage
         </Link>
+        {" · "}
+        <Link
+          href={`/organizations/${organizationId}/vehicles/${assetId}/service-history`}
+        >
+          Service history
+        </Link>
       </p>
       <section>
         <h2>Maintenance</h2>
