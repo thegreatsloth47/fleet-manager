@@ -1,3 +1,6 @@
+vi.mock("@/modules/organizations/page-access", () => ({
+  resolveOrganizationPage: async () => "org-a",
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
@@ -30,7 +33,10 @@ import VehiclesPage from "./page";
 import VehiclePage from "./[assetId]/page";
 import NewVehiclePage from "./new/page";
 const props = {
-  params: Promise.resolve({ organizationId: "org-a", assetId: "asset-a" }),
+  params: Promise.resolve({
+    organizationSlug: "acme-fleet",
+    assetId: "asset-a",
+  }),
   searchParams: Promise.resolve({}),
 };
 const vehicle = {
@@ -62,10 +68,11 @@ beforeEach(() => {
 test("owners can navigate the list, inspect details, edit and archive", async () => {
   const list = renderToStaticMarkup(await VehiclesPage(props));
   expect(list).toContain("Add vehicle");
+  expect(mocks.get).toHaveBeenCalledWith("org-a", { archived: false });
   expect(list).toContain("Acme Fleet");
   expect(mocks.organizations).toHaveBeenCalledWith("org-a");
-  expect(list).toContain("/organizations/org-a/maintenance");
-  expect(list).toContain("/organizations/org-a/vehicles/asset-a");
+  expect(list).toContain("/acme-fleet/maintenance");
+  expect(list).toContain("/acme-fleet/vehicles/asset-a");
   const detail = renderToStaticMarkup(await VehiclePage(props));
   for (const value of [
     "VIN-A",

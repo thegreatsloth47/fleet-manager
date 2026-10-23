@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({ createServerClient: vi.fn() }));
 vi.mock("@supabase/ssr", () => ({
   createServerClient: mocks.createServerClient,
 }));
-import { proxy } from "./proxy";
+import { proxy, config } from "./proxy";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -61,4 +62,15 @@ test("passes refreshed auth cookies to the downstream request and browser with p
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   expect(response.headers.get("Pragma")).toBe("no-cache");
   expect(response.headers.get("Expires")).toBe("0");
+});
+
+test.each([
+  "/acme-plumbing/vehicles",
+  "/acme-plumbing/vehicles/vehicle-id/service-history",
+  "/acme-plumbing/maintenance",
+  "/acme-plumbing/dashboard",
+])("refreshes auth on slug route %s", (url) => {
+  expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(
+    true,
+  );
 });

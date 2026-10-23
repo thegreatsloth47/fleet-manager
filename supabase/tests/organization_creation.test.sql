@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(30);
 
 insert into auth.users (id) values
   ('66666666-6666-4666-8666-666666666666'),
@@ -52,5 +52,21 @@ reset role;
 select is((select count(*) from public.organizations where name = 'Must roll back'), 0::bigint, 'Failed creation leaves no orphan organization');
 select is((select count(*) from public.memberships where organization_id in (current_setting('test.created_org_a')::uuid, current_setting('test.created_org_b')::uuid)), 2::bigint, 'Successful organizations retain exactly their original memberships');
 
+-- Slug allocation is shared by the application RPC and administrative inserts.
+select is((select slug from public.organizations where id = current_setting('test.created_org_a')::uuid), 'team-a', 'Creation derives a readable slug');
+insert into public.organizations (name) values ('Team A'), ('API'), ('!!!'), (repeat('x', 200));
+select is((select count(*) from public.organizations where slug = 'team-a-2'), 1::bigint, 'Duplicate names receive a unique suffix');
+select is((select slug from public.organizations where name = 'API'), 'org-api', 'Reserved routes receive a safe prefix');
+select is((select slug from public.organizations where name = '!!!'), 'organization', 'Names without URL-safe characters receive a fallback');
+select ok((select length(slug) <= 63 from public.organizations where name = repeat('x', 200)), 'Long names yield bounded slugs');
+update public.organizations set name = 'Renamed fleet' where id = current_setting('test.created_org_a')::uuid;
+select is((select slug from public.organizations where id = current_setting('test.created_org_a')::uuid), 'team-a', 'Renaming preserves the slug');
+select throws_ok($$update public.organizations set slug = 'changed' where id = current_setting('test.created_org_a')::uuid$$, '22023', 'Organization slugs cannot be changed', 'Slug editing is disabled');
+select throws_ok($$update public.organizations set slug = null where id = current_setting('test.created_org_a')::uuid$$, '22023', null, 'Slugs cannot be cleared');
+set local role authenticated;
+select is((select count(*) from public.organizations where slug = 'team-a'), 0::bigint, 'Revoked membership cannot resolve a known slug');
+select is((select count(*) from public.organizations where slug = 'team-b'), 0::bigint, 'Knowing a foreign slug grants no access');
+select throws_ok($$update public.organizations set slug = 'stolen' where slug = 'team-b'$$, '42501', null, 'Authenticated users cannot mutate slugs directly');
+reset role;
 select * from finish();
 rollback;

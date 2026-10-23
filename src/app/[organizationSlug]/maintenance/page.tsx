@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getVehicles } from "@/modules/assets/queries";
@@ -8,10 +9,11 @@ export default async function MaintenancePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ organizationId: string }>;
+  params: Promise<{ organizationSlug: string }>;
   searchParams?: Promise<{ vehicle?: string }>;
 }) {
-  const { organizationId } = await params;
+  const { organizationSlug } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const result = await getMaintenance(organizationId);
   if (result.status === 401) redirect("/auth");
   if (result.status === 404 || result.status === 400) notFound();
@@ -43,18 +45,16 @@ export default async function MaintenancePage({
         <Link href="/auth">Account</Link>
       </p>
       <p>
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
       </p>
       <p>{result.data.organizationName}</p>
       <h1>Maintenance templates</h1>
       {vehicle && (
         <p>
           <Link
-            href={`/organizations/${organizationId}/vehicles/${vehicle.id}/maintenance`}
+            href={`/${organizationSlug}/vehicles/${vehicle.id}/maintenance`}
           >
             Back to {vehicle.name} maintenance
           </Link>

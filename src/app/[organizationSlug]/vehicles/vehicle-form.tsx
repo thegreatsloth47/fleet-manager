@@ -6,15 +6,17 @@ import type { Vehicle } from "@/modules/assets/vehicle";
 
 export default function VehicleForm({
   organizationId,
+  organizationSlug,
   vehicle,
 }: {
   organizationId: string;
+  organizationSlug: string;
   vehicle?: Vehicle;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
-  const path = `/organizations/${organizationId}/vehicles`;
+  const path = `/${organizationSlug}/vehicles`;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,7 +30,7 @@ export default function VehicleForm({
     setMessage("");
     try {
       const response = await fetch(
-        `/api${path}${vehicle ? `/${vehicle.id}` : ""}`,
+        `/api/organizations/${organizationId}/vehicles${vehicle ? `/${vehicle.id}` : ""}`,
         {
           method: vehicle ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },

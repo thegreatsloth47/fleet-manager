@@ -35,7 +35,7 @@ export async function getAccessibleOrganizations(organizationId?: string) {
 
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, status, timezone, created_at")
+    .select("id, slug, name, status, timezone, created_at")
     .in("id", organizationId ? [organizationId] : organizationIds)
     .order("name");
 

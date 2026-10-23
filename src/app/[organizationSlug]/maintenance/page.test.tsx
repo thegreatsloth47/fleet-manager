@@ -1,3 +1,6 @@
+vi.mock("@/modules/organizations/page-access", () => ({
+  resolveOrganizationPage: async (slug: string) => slug,
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ maintenance: vi.fn(), vehicles: vi.fn() }));
@@ -16,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 import MaintenancePage from "./page";
 import VehicleMaintenancePage from "../vehicles/[assetId]/maintenance/page";
-const params = Promise.resolve({ organizationId: "org", assetId: "van" });
+const params = Promise.resolve({ organizationSlug: "org", assetId: "van" });
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.maintenance.mockResolvedValue({
@@ -43,7 +46,7 @@ test("templates retain vehicle context only through the authorized vehicle query
     }),
   );
   expect(mocks.vehicles).toHaveBeenCalledWith("org", { assetId: "van" });
-  expect(html).toContain('href="/organizations/org/vehicles/van/maintenance"');
+  expect(html).toContain('href="/org/vehicles/van/maintenance"');
   expect(html).toContain("Back to Van A maintenance");
   expect(html).toContain("Acme Fleet");
   expect(html).toContain('id="new-template"');
@@ -68,11 +71,9 @@ test("organization templates need no vehicle context", async () => {
 test("empty vehicle schedules link directly to template creation and related pages", async () => {
   const html = renderToStaticMarkup(await VehicleMaintenancePage({ params }));
   expect(html).toContain("Van A — Maintenance schedules");
-  expect(html).toContain(
-    'href="/organizations/org/maintenance?vehicle=van#new-template"',
-  );
-  expect(html).toContain('href="/organizations/org/vehicles/van/mileage"');
-  expect(html).toContain('href="/organizations/org/dashboard"');
+  expect(html).toContain('href="/org/maintenance?vehicle=van#new-template"');
+  expect(html).toContain('href="/org/vehicles/van/mileage"');
+  expect(html).toContain('href="/org/dashboard"');
   mocks.maintenance.mockResolvedValue({
     status: 200,
     data: {

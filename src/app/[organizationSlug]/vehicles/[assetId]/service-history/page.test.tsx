@@ -1,3 +1,6 @@
+vi.mock("@/modules/organizations/page-access", () => ({
+  resolveOrganizationPage: async (slug: string) => slug,
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { ServiceHistory } from "@/modules/service-history/service";
@@ -16,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 import ServicePage from "./page";
 const props = {
-  params: Promise.resolve({ organizationId: "org", assetId: "vehicle" }),
+  params: Promise.resolve({ organizationSlug: "org", assetId: "vehicle" }),
 };
 const record = {
   id: "service",
@@ -111,9 +114,7 @@ test("shows preserved mileage, review warning, money, and auditable schedule tar
     "Void service",
   ])
     expect(html).toContain(text);
-  expect(html).toContain(
-    'href="/organizations/org/vehicles/vehicle/maintenance"',
-  );
+  expect(html).toContain('href="/org/vehicles/vehicle/maintenance"');
   expect(html).not.toContain("checked");
 });
 test("read-only and archived views retain audit and warnings without mutation controls", async () => {

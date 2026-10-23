@@ -1,4 +1,6 @@
 import {
+  organizationPath,
+  apiPath,
   test,
   expect,
   signIn,
@@ -75,7 +77,7 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   await expect(page.getByText("Archived — read-only")).toBeVisible();
 
   await signIn(page, reader);
-  await page.goto(`/organizations/${organization}/vehicles`);
+  await page.goto(`${organizationPath(organization)}/vehicles`);
   await expect(page.getByRole("link", { name: "Add vehicle" })).toHaveCount(0);
   await page.goto(vehicle);
   await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
@@ -90,10 +92,10 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
       "POST",
       { name: `${fixtures.prefix}-forbidden` },
     ],
-    [`/api${vehicle}`, "PUT", { name: `${fixtures.prefix}-forbidden` }],
-    [`/api${vehicle}/archive`, "POST", {}],
+    [`${apiPath(vehicle)}`, "PUT", { name: `${fixtures.prefix}-forbidden` }],
+    [`${apiPath(vehicle)}/archive`, "POST", {}],
     ...["baseline", "reading", "correct", "void", "replacement"].map(
-      (action) => [`/api${vehicle}/mileage`, "POST", { action }] as const,
+      (action) => [`${apiPath(vehicle)}/mileage`, "POST", { action }] as const,
     ),
   ] as const)
     expect((await browserRequest(page, path, method, body)).status).toBe(403);
@@ -104,13 +106,13 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   ).toHaveCount(0);
   await page.goto(vehicle);
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
-  expect((await browserRequest(page, `/api${vehicle}`)).status).toBe(404);
-  expect((await browserRequest(page, `/api${vehicle}/mileage`)).status).toBe(
-    404,
-  );
+  expect((await browserRequest(page, `${apiPath(vehicle)}`)).status).toBe(404);
+  expect(
+    (await browserRequest(page, `${apiPath(vehicle)}/mileage`)).status,
+  ).toBe(404);
   expect(
     (
-      await browserRequest(page, `/api${vehicle}/mileage`, "POST", {
+      await browserRequest(page, `${apiPath(vehicle)}/mileage`, "POST", {
         action: "reading",
       })
     ).status,
@@ -125,14 +127,14 @@ test("admin, read-only and driver roles enforce real server permissions; revocat
   // Keep this browser and its authenticated session; no logout/token replacement.
   expect(
     (
-      await browserRequest(page, `/api${vehicle}`, "PUT", {
+      await browserRequest(page, `${apiPath(vehicle)}`, "PUT", {
         name: `${fixtures.prefix}-forbidden`,
       })
     ).status,
   ).toBe(404);
-  expect((await browserRequest(page, `/api${vehicle}/mileage`)).status).toBe(
-    404,
-  );
+  expect(
+    (await browserRequest(page, `${apiPath(vehicle)}/mileage`)).status,
+  ).toBe(404);
   await page.reload();
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   await page.goto("/organizations");
@@ -161,13 +163,13 @@ test("tenant IDs cannot cross boundaries and roles remain organization-specific"
       .status,
   ).toBe(404);
   for (const path of [vehicleA, `${vehicleA}/mileage`]) {
-    expect((await browserRequest(page, `/api${path}`)).status).toBe(404);
+    expect((await browserRequest(page, `${apiPath(path)}`)).status).toBe(404);
     await page.goto(path);
     await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   }
   expect(
     (
-      await browserRequest(page, `/api${vehicleA}`, "PUT", {
+      await browserRequest(page, `${apiPath(vehicleA)}`, "PUT", {
         name: `${fixtures.prefix}-forbidden`,
       })
     ).status,
@@ -194,7 +196,7 @@ test("tenant IDs cannot cross boundaries and roles remain organization-specific"
   );
   expect(
     (
-      await browserRequest(page, `/api${vehicleA}`, "PUT", {
+      await browserRequest(page, `${apiPath(vehicleA)}`, "PUT", {
         name: `${fixtures.prefix}-forbidden`,
       })
     ).status,
@@ -204,16 +206,16 @@ test("tenant IDs cannot cross boundaries and roles remain organization-specific"
     page.getByRole("button", { name: "Save changes" }),
   ).toBeVisible();
   await signIn(page, ownerA);
-  expect((await browserRequest(page, `/api${vehicleB}`)).status).toBe(404);
+  expect((await browserRequest(page, `${apiPath(vehicleB)}`)).status).toBe(404);
   await signIn(page, outsider);
   await expect(
     page.getByText("You do not have access to an organization yet."),
   ).toBeVisible();
   for (const path of [vehicleA, vehicleB]) {
-    expect((await browserRequest(page, `/api${path}`)).status).toBe(404);
+    expect((await browserRequest(page, `${apiPath(path)}`)).status).toBe(404);
     expect(
       (
-        await browserRequest(page, `/api${path}/mileage`, "POST", {
+        await browserRequest(page, `${apiPath(path)}/mileage`, "POST", {
           action: "reading",
         })
       ).status,

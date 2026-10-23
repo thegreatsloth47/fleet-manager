@@ -1,4 +1,5 @@
 import {
+  apiPath,
   test,
   expect,
   signIn,
@@ -139,7 +140,7 @@ test("mileage, backdating, corrections, void/restoration, multiple replacements 
   await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
   expect(
     (
-      await browserRequest(page, `/api${vehicle}/mileage`, "POST", {
+      await browserRequest(page, `${apiPath(vehicle)}/mileage`, "POST", {
         action: "reading",
       })
     ).status,
@@ -182,7 +183,7 @@ test("kilometer declared baseline, exact tenths and safe command retry through t
   const payload: unknown = (await sent).postDataJSON();
   await usage(page, "0.1", "510.3", "km");
   expect(
-    (await browserRequest(page, `/api${vehicle}/mileage`, "POST", payload))
+    (await browserRequest(page, `${apiPath(vehicle)}/mileage`, "POST", payload))
       .status,
   ).toBe(201);
   await page.reload();

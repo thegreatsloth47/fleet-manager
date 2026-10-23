@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getMaintenance } from "@/modules/maintenance/service";
@@ -6,9 +7,10 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   params,
 }: {
-  params: Promise<{ organizationId: string }>;
+  params: Promise<{ organizationSlug: string }>;
 }) {
-  const { organizationId } = await params;
+  const { organizationSlug } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const result = await getMaintenance(organizationId);
   if (result.status === 401) redirect("/auth");
   if (result.status === 400 || result.status === 404) notFound();
@@ -24,9 +26,9 @@ export default async function DashboardPage({
       <p>
         <Link href="/organizations">Organizations</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/maintenance`}>
+        <Link href={`/${organizationSlug}/maintenance`}>
           Maintenance templates
         </Link>
         {" · "}
@@ -52,14 +54,12 @@ export default async function DashboardPage({
         {alerts.map((item) => (
           <li key={item.id}>
             <h3>
-              <Link
-                href={`/organizations/${organizationId}/vehicles/${item.asset_id}`}
-              >
+              <Link href={`/${organizationSlug}/vehicles/${item.asset_id}`}>
                 {item.vehicleName}
               </Link>
               {" — "}
               <Link
-                href={`/organizations/${organizationId}/vehicles/${item.asset_id}/maintenance`}
+                href={`/${organizationSlug}/vehicles/${item.asset_id}/maintenance`}
               >
                 {item.name}
               </Link>
@@ -75,7 +75,7 @@ export default async function DashboardPage({
             {warnings.map((w) => (
               <li key={`${w.assetId}-${w.message}`}>
                 <Link
-                  href={`/organizations/${organizationId}/vehicles/${w.assetId}/${w.page}`}
+                  href={`/${organizationSlug}/vehicles/${w.assetId}/${w.page}`}
                 >
                   {w.name} —{" "}
                   {w.page === "mileage"

@@ -321,6 +321,16 @@ after a successful generation, replace `src/lib/supabase/database.types.ts` with
 the output. The checked-in types mirror the committed migrations. Review migrations
 and run the database suite before `supabase db push` against a hosted project.
 
+Organization pages use stable name-derived slugs, for example
+`/acme-plumbing/vehicles`, `/acme-plumbing/dashboard`, and
+`/acme-plumbing/maintenance`. APIs and tenant-owned records retain organization
+UUIDs. Slug resolution checks current active membership; readable URLs do not
+grant access. Apply the organization-slug migration before running this version:
+it backfills existing organizations and allocates unique slugs for new ones.
+Duplicate names receive numeric suffixes; reserved route names receive an `org-`
+prefix. Renaming an organization leaves its slug unchanged. Slug editing and
+redirects from the old UUID page URLs are not supported.
+
 ### Application files and dependencies
 
 - `src/lib/supabase/`: public environment validation, typed browser client,

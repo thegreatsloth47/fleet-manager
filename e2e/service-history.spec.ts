@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import {
+  apiPath,
   test,
   expect,
   signIn,
@@ -40,7 +41,7 @@ async function createSchedule(
   ).toBe(201);
   expect(
     (
-      await browserRequest(page, `/api${vehicle}/maintenance`, "POST", {
+      await browserRequest(page, `${apiPath(vehicle)}/maintenance`, "POST", {
         ...rule,
         id: randomUUID(),
         expected_version: 0,
@@ -151,13 +152,13 @@ test("completed service advances selected schedules and rejects conflicting back
   await page.getByRole("checkbox", { name: "Combined", exact: true }).check();
   const beforeConflict = await browserRequest(
     page,
-    `/api${vehicle}/service-history`,
+    `${apiPath(vehicle)}/service-history`,
   );
   expect(beforeConflict.status).toBe(200);
   await saveServiceForm(page, 409);
   const afterConflict = await browserRequest(
     page,
-    `/api${vehicle}/service-history`,
+    `${apiPath(vehicle)}/service-history`,
   );
   expect(afterConflict.status).toBe(200);
   if (
@@ -225,24 +226,38 @@ test("service permissions preserve owner/admin writes, reader access, driver res
   await expect(page.getByText("Service history is read-only.")).toBeVisible();
   await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
   expect(
-    (await browserRequest(page, `/api${vehicle}/service-history`, "POST", {}))
-      .status,
+    (
+      await browserRequest(
+        page,
+        `${apiPath(vehicle)}/service-history`,
+        "POST",
+        {},
+      )
+    ).status,
   ).toBe(403);
   for (const user of [driver, foreign]) {
     await signIn(page, user);
     expect(
-      (await browserRequest(page, `/api${vehicle}/service-history`)).status,
+      (await browserRequest(page, `${apiPath(vehicle)}/service-history`))
+        .status,
     ).toBe(404);
     expect(
-      (await browserRequest(page, `/api${vehicle}/service-history`, "POST", {}))
-        .status,
+      (
+        await browserRequest(
+          page,
+          `${apiPath(vehicle)}/service-history`,
+          "POST",
+          {},
+        )
+      ).status,
     ).toBe(404);
     await page.goto(`${vehicle}/service-history`);
     await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   }
   await signIn(page, owner);
   expect(
-    (await browserRequest(page, `/api${vehicle}/archive`, "POST", {})).status,
+    (await browserRequest(page, `${apiPath(vehicle)}/archive`, "POST", {}))
+      .status,
   ).toBe(200);
   await page.goto(`${vehicle}/service-history`);
   await expect(record).toBeVisible();
@@ -250,21 +265,26 @@ test("service permissions preserve owner/admin writes, reader access, driver res
   await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
   expect(
     (
-      await browserRequest(page, `/api${vehicle}/service-history`, "POST", {
-        command_id: randomUUID(),
-        id: randomUUID(),
-        expected_version: 0,
-        action: "save",
-        reason: null,
-        service_date: "2020-01-01",
-        title: "Blocked",
-        provider: null,
-        cost_cents: null,
-        currency: "USD",
-        notes: null,
-        total_distance: null,
-        schedule_ids: [],
-      })
+      await browserRequest(
+        page,
+        `${apiPath(vehicle)}/service-history`,
+        "POST",
+        {
+          command_id: randomUUID(),
+          id: randomUUID(),
+          expected_version: 0,
+          action: "save",
+          reason: null,
+          service_date: "2020-01-01",
+          title: "Blocked",
+          provider: null,
+          cost_cents: null,
+          currency: "USD",
+          notes: null,
+          total_distance: null,
+          schedule_ids: [],
+        },
+      )
     ).status,
   ).toBe(409);
 });

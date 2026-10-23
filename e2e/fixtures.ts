@@ -1,11 +1,26 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { Fixtures, type TestUser } from "./admin";
 export { expect };
+
+const organizationSlugs = new Map<string, string>();
+export function organizationPath(id: string) {
+  const slug = organizationSlugs.get(id);
+  if (!slug) throw new Error("Organization slug not registered for fixture");
+  return `/${slug}`;
+}
+export function apiPath(pagePath: string) {
+  const [, slug, ...rest] = pagePath.split("/");
+  const id = [...organizationSlugs].find(([, value]) => value === slug)?.[0];
+  if (!id) throw new Error("Page path does not belong to a registered fixture");
+  return `/api/organizations/${id}/${rest.join("/")}`;
+}
+
 export const test = base.extend<{ fixtures: Fixtures }>({
   fixtures: async ({}, runFixture, testInfo) => {
     const runId = process.env.E2E_RUN_ID;
     if (!runId)
       throw new Error("Use npm run test:e2e to create a tracked run.");
+    organizationSlugs.clear();
     const fixtures = new Fixtures(runId);
     try {
       await fixtures.verifyProject();
@@ -52,18 +67,38 @@ export async function createOrganization(
   expect(response.status()).toBe(201);
   // The form does not consume the fetch body. Chromium can leave that response
   // pending even after the server finishes, so read the persisted result in UI.
-  const organization = page.getByRole("listitem").filter({ hasText: name });
-  const vehicles = organization.getByRole("link", {
+  const organizationItem = page.getByRole("listitem").filter({ hasText: name });
+  const vehicles = organizationItem.getByRole("link", {
     name: "Vehicles",
     exact: true,
   });
   await expect(vehicles).toBeVisible();
   const href = await vehicles.getAttribute("href");
-  const match = href?.match(
-    /^\/organizations\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/vehicles$/,
-  );
+  const match = href?.match(/^\/([a-z0-9]+(?:-[a-z0-9]+)*)\/vehicles$/);
   if (!match) throw new Error("Invalid organization Vehicles link.");
-  const id = match[1];
+  const listed = await browserRequest(page, "/api/organizations");
+  expect(listed.status).toBe(200);
+  const body = listed.body;
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("organizations" in body) ||
+    !Array.isArray(body.organizations)
+  )
+    throw new Error("Expected accessible organizations");
+  const organization: unknown = body.organizations.find(
+    (org: unknown) =>
+      org && typeof org === "object" && "slug" in org && org.slug === match[1],
+  );
+  if (
+    !organization ||
+    typeof organization !== "object" ||
+    !("id" in organization) ||
+    typeof organization.id !== "string"
+  )
+    throw new Error("Created organization missing from API");
+  const id = organization.id;
+  organizationSlugs.set(id, match[1]);
   await fixtures.registerOrganization(name, id);
   return id;
 }
@@ -75,7 +110,7 @@ export async function createVehicle(
   label = "vehicle",
   vin?: string,
 ) {
-  await page.goto(`/organizations/${organization}/vehicles`);
+  await page.goto(`${organizationPath(organization)}/vehicles`);
   await page.getByRole("link", { name: "Add vehicle", exact: true }).click();
   await page
     .getByLabel("Vehicle name or number")
@@ -83,7 +118,7 @@ export async function createVehicle(
   if (vin) await page.getByLabel("VIN", { exact: true }).fill(vin);
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(
-    new RegExp(`/organizations/${organization}/vehicles/[0-9a-f-]{36}$`),
+    new RegExp(`${organizationPath(organization)}/vehicles/[0-9a-f-]{36}$`),
   );
   return new URL(page.url()).pathname;
 }

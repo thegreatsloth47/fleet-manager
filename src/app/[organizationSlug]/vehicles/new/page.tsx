@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { authorizeVehicles } from "@/modules/assets/access";
@@ -7,20 +8,19 @@ export const dynamic = "force-dynamic";
 export default async function NewVehiclePage({
   params,
 }: {
-  params: Promise<{ organizationId: string }>;
+  params: Promise<{ organizationSlug: string }>;
 }) {
-  const { organizationId } = await params;
+  const { organizationSlug } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const access = await authorizeVehicles(organizationId, true);
   if (access.status === 401) redirect("/auth");
   if ([400, 403, 404].includes(access.status)) notFound();
   return (
     <main>
       <p>
-        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
         <Link href="/auth">Account</Link>
       </p>
@@ -28,7 +28,10 @@ export default async function NewVehiclePage({
       {access.error ? (
         <p role="alert">{access.error}</p>
       ) : (
-        <VehicleForm organizationId={organizationId} />
+        <VehicleForm
+          organizationSlug={organizationSlug}
+          organizationId={organizationId}
+        />
       )}
     </main>
   );

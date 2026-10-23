@@ -1,5 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import {
+  organizationPath,
+  apiPath,
   test,
   expect,
   signIn,
@@ -31,7 +33,7 @@ async function createTemplate(
   fromCurrentPage = false,
 ) {
   if (!fromCurrentPage)
-    await page.goto(`/organizations/${organization}/maintenance`);
+    await page.goto(`${organizationPath(organization)}/maintenance`);
   const form = page.getByRole("group", {
     name: "Create maintenance template",
     exact: true,
@@ -105,7 +107,9 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     .getByRole("link", { name: "Create a maintenance template", exact: true })
     .click();
   await expect(page).toHaveURL(
-    new RegExp(`/organizations/${org}/maintenance\\?vehicle=.*#new-template$`),
+    new RegExp(
+      `${organizationPath(org)}/maintenance\\?vehicle=.*#new-template$`,
+    ),
   );
   await createTemplate(page, org, "Oil", "1000", undefined, "mi", true);
   await page.getByRole("link", { name: /^Back to .+ maintenance$/ }).click();
@@ -135,7 +139,7 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     observed: "2020-01-03T12:00",
     reason: "Replacement",
   });
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.locator("ol > li")).toContainText("Overdue");
   await expect(page.locator("ol > li")).toContainText("1 mi overdue");
   await page.goto(`${vehicle}/mileage`);
@@ -161,7 +165,7 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await expect(
     schedule(page, "Oil").getByText("Paused", { exact: true }),
   ).toBeVisible();
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.getByText("No active maintenance alerts.")).toBeVisible();
   await page.goto(`${vehicle}/maintenance`);
   await schedule(page, "Oil")
@@ -174,7 +178,7 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await expect(
     schedule(page, "Oil").getByText("Due", { exact: true }),
   ).toBeVisible();
-  await page.goto(`/organizations/${org}/maintenance`);
+  await page.goto(`${organizationPath(org)}/maintenance`);
   // The same text also names the fieldset legend inside the disclosure.
   const editTemplate = schedule(page, "Oil")
     .locator("summary")
@@ -196,9 +200,9 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
   await expect(
     schedule(page, "Oil").getByText("Disabled", { exact: true }),
   ).toBeVisible();
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.getByText("No active maintenance alerts.")).toBeVisible();
-  await page.goto(`/organizations/${org}/maintenance`);
+  await page.goto(`${organizationPath(org)}/maintenance`);
   await schedule(page, "Oil")
     .locator("summary")
     .filter({ hasText: /^Edit template$/ })
@@ -226,7 +230,7 @@ test("maintenance follows logical mileage, supports schedule edits and pause/dis
     .getByRole("button", { name: "Archive vehicle", exact: true })
     .click();
   await expect(page.getByText("Archived — read-only")).toBeVisible();
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.getByText("No active maintenance alerts.")).toBeVisible();
   await page.goto(`${vehicle}/maintenance`);
   await expect(
@@ -272,7 +276,7 @@ test("calendar-only schedules need no meter; combined schedules choose the earli
   ).toBeVisible();
   await createTemplate(page, org, "Distance", "1000", undefined, "km");
   await assign(page, vehicle, "Distance", "10080");
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   const alerts = page.locator("ol > li");
   await expect(alerts).toHaveCount(3);
   await expect(alerts.nth(0)).toContainText("Combined");
@@ -322,18 +326,18 @@ test("maintenance owners/admins manage, readers view, and drivers, foreign tenan
   await createTemplate(page, org, "Inspection", undefined, "30");
   await assign(page, vehicle, "Inspection", undefined, dateOffset(-1));
   await signIn(page, reader);
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.locator("ol > li")).toContainText("Overdue");
   for (const path of [
-    `/organizations/${org}/maintenance`,
+    `${organizationPath(org)}/maintenance`,
     `${vehicle}/maintenance`,
   ]) {
     await page.goto(path);
     await expect(page.getByText("Maintenance is read-only.")).toBeVisible();
     await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
-    expect((await browserRequest(page, `/api${path}`, "POST", {})).status).toBe(
-      403,
-    );
+    expect(
+      (await browserRequest(page, `${apiPath(path)}`, "POST", {})).status,
+    ).toBe(403);
   }
   await signIn(page, foreign);
   const foreignOrg = await createOrganization(
@@ -353,19 +357,19 @@ test("maintenance owners/admins manage, readers view, and drivers, foreign tenan
   for (const user of [foreign, driver]) {
     await signIn(page, user);
     for (const path of [
-      `/organizations/${org}/maintenance`,
+      `${organizationPath(org)}/maintenance`,
       `${vehicle}/maintenance`,
     ]) {
-      expect((await browserRequest(page, `/api${path}`)).status).toBe(404);
+      expect((await browserRequest(page, `${apiPath(path)}`)).status).toBe(404);
       expect(
-        (await browserRequest(page, `/api${path}`, "POST", {})).status,
+        (await browserRequest(page, `${apiPath(path)}`, "POST", {})).status,
       ).toBe(404);
     }
-    await page.goto(`/organizations/${org}/dashboard`);
+    await page.goto(`${organizationPath(org)}/dashboard`);
     await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   }
   await signIn(page, admin);
-  await page.goto(`/organizations/${org}/dashboard`);
+  await page.goto(`${organizationPath(org)}/dashboard`);
   await expect(page.locator("ol > li")).toHaveCount(1);
   await fixtures.membership(org, admin, "admin", "revoked");
   expect(

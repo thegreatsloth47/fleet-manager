@@ -1,4 +1,6 @@
 import {
+  organizationPath,
+  apiPath,
   test,
   expect,
   signIn,
@@ -14,11 +16,11 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   const owner = await fixtures.user("owner");
   await signIn(page, owner);
   const organization = await createOrganization(page, fixtures, owner);
-  await page.goto(`/organizations/${organization}/vehicles`);
+  await page.goto(`${organizationPath(organization)}/vehicles`);
   await page.getByRole("link", { name: "Add vehicle", exact: true }).click();
   await page.getByLabel("Vehicle name or number").fill("Unsaved vehicle");
   await page.getByRole("link", { name: "Cancel", exact: true }).click();
-  await expect(page).toHaveURL(`/organizations/${organization}/vehicles`);
+  await expect(page).toHaveURL(`${organizationPath(organization)}/vehicles`);
   await expect(
     page.getByRole("link", { name: "Unsaved vehicle", exact: true }),
   ).toHaveCount(0);
@@ -55,9 +57,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     .getByRole("combobox", { name: "Status", exact: true })
     .selectOption("out_of_service");
   const saved = page.waitForResponse(
-    (r) =>
-      r.request().method() === "PUT" &&
-      r.url().endsWith(path.replace("/organizations/", "/api/organizations/")),
+    (r) => r.request().method() === "PUT" && r.url().endsWith(apiPath(path)),
   );
   await page.getByRole("button", { name: "Save changes" }).click();
   expect((await saved).status()).toBe(200);
@@ -80,7 +80,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   await page.reload();
   await expect(description).toHaveValue("");
 
-  await page.goto(`/organizations/${organization}/vehicles/new`);
+  await page.goto(`${organizationPath(organization)}/vehicles/new`);
   await page
     .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-edited`);
@@ -120,7 +120,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
   );
   expect(
     (
-      await browserRequest(page, `/api${path}`, "PUT", {
+      await browserRequest(page, `${apiPath(path)}`, "PUT", {
         name: `${fixtures.prefix}-restore`,
       })
     ).status,
@@ -139,7 +139,7 @@ test("vehicle create/edit, optional fields, uniqueness, archive and archived VIN
     page.getByRole("link", { name: `${fixtures.prefix}-edited` }),
   ).toHaveCount(0);
   await createVehicle(page, fixtures, organization, "edited"); // Archived display names can be reused.
-  await page.goto(`/organizations/${organization}/vehicles/new`);
+  await page.goto(`${organizationPath(organization)}/vehicles/new`);
   await page
     .getByLabel("Vehicle name or number")
     .fill(`${fixtures.prefix}-reserved-vin`);

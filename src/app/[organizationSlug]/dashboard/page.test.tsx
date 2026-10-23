@@ -1,3 +1,6 @@
+vi.mock("@/modules/organizations/page-access", () => ({
+  resolveOrganizationPage: async (slug: string) => slug,
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
@@ -13,7 +16,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 import DashboardPage from "./page";
-const params = Promise.resolve({ organizationId: "org" });
+const params = Promise.resolve({ organizationSlug: "org" });
 beforeEach(() => vi.resetAllMocks());
 test("signed-out and unauthorized visitors cannot render dashboard data", async () => {
   mocks.query.mockResolvedValue({ status: 401 });
@@ -49,7 +52,7 @@ test("an empty attention list still displays actionable setup gaps", async () =>
   const html = renderToStaticMarkup(await DashboardPage({ params }));
   expect(html).toContain("No active maintenance alerts.");
   expect(html).toContain("Finish setup");
-  expect(html).toContain("/organizations/org/vehicles/vehicle/maintenance");
+  expect(html).toContain("/org/vehicles/vehicle/maintenance");
 });
 
 test.each([true, false])(
@@ -81,10 +84,10 @@ test.each([true, false])(
     const html = renderToStaticMarkup(await DashboardPage({ params }));
     expect(html).toContain("Acme Fleet");
     expect(html).toContain(
-      `href="/organizations/org/vehicles/van/mileage">Van A — ${canManage ? "Record starting mileage" : "View mileage"}</a>`,
+      `href="/org/vehicles/van/mileage">Van A — ${canManage ? "Record starting mileage" : "View mileage"}</a>`,
     );
     expect(html).toContain(
-      `href="/organizations/org/vehicles/van/maintenance">Van A — ${canManage ? "Add schedule" : "View maintenance schedules"}</a>`,
+      `href="/org/vehicles/van/maintenance">Van A — ${canManage ? "Add schedule" : "View maintenance schedules"}</a>`,
     );
   },
 );

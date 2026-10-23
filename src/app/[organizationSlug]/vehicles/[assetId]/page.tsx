@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getVehicles } from "@/modules/assets/queries";
@@ -10,9 +11,10 @@ export const dynamic = "force-dynamic";
 export default async function VehiclePage({
   params,
 }: {
-  params: Promise<{ organizationId: string; assetId: string }>;
+  params: Promise<{ organizationSlug: string; assetId: string }>;
 }) {
-  const { organizationId, assetId } = await params;
+  const { organizationSlug, assetId } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const result = await getVehicles(organizationId, { assetId });
   if (result.status === 401) redirect("/auth");
   if (result.status === 404 || result.status === 400) notFound();
@@ -28,37 +30,29 @@ export default async function VehiclePage({
     <main>
       <p>
         <Link
-          href={`/organizations/${organizationId}/vehicles${vehicle.archived_at ? "?archived=true" : ""}`}
+          href={`/${organizationSlug}/vehicles${vehicle.archived_at ? "?archived=true" : ""}`}
         >
           {vehicle.archived_at ? "Archived vehicles" : "Vehicles"}
         </Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
         <Link href="/auth">Account</Link>
       </p>
       <h1>{vehicle.name}</h1>
       <p>
-        <Link
-          href={`/organizations/${organizationId}/vehicles/${assetId}/mileage`}
-        >
+        <Link href={`/${organizationSlug}/vehicles/${assetId}/mileage`}>
           Mileage
         </Link>
         {" · "}
-        <Link
-          href={`/organizations/${organizationId}/vehicles/${assetId}/service-history`}
-        >
+        <Link href={`/${organizationSlug}/vehicles/${assetId}/service-history`}>
           Service history
         </Link>
       </p>
       <section>
         <h2>Maintenance</h2>
         <p>
-          <Link
-            href={`/organizations/${organizationId}/vehicles/${assetId}/maintenance`}
-          >
+          <Link href={`/${organizationSlug}/vehicles/${assetId}/maintenance`}>
             Maintenance schedules
           </Link>
         </p>
@@ -99,6 +93,7 @@ export default async function VehiclePage({
       {result.data.canManage && !vehicle.archived_at && (
         <>
           <VehicleForm
+            organizationSlug={organizationSlug}
             key={vehicle.id + JSON.stringify(vehicle)}
             organizationId={organizationId}
             vehicle={vehicle}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAccessibleOrganizations } from "@/modules/organizations/queries";
 import { canViewVehicles } from "@/modules/assets/vehicle";
@@ -24,13 +25,11 @@ export default async function OrganizationsPage() {
                 <>
                   {" "}
                   —{" "}
-                  <a href={`/organizations/${organization.id}/vehicles`}>
-                    Vehicles
-                  </a>
+                  <Link href={`/${organization.slug}/vehicles`}>Vehicles</Link>
                   {" · "}
-                  <a href={`/organizations/${organization.id}/dashboard`}>
+                  <Link href={`/${organization.slug}/dashboard`}>
                     Dashboard
-                  </a>
+                  </Link>
                 </>
               )}
             </li>
@@ -41,7 +40,7 @@ export default async function OrganizationsPage() {
       )}
       <CreateOrganizationForm />
       <p>
-        <a href="/auth">Account</a>
+        <Link href="/auth">Account</Link>
       </p>
     </main>
   );

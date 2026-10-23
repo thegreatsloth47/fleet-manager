@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getMileage } from "@/modules/meters/service";
@@ -7,30 +8,27 @@ export const dynamic = "force-dynamic";
 export default async function MileagePage({
   params,
 }: {
-  params: Promise<{ organizationId: string; assetId: string }>;
+  params: Promise<{ organizationSlug: string; assetId: string }>;
 }) {
-  const { organizationId, assetId } = await params;
+  const { organizationSlug, assetId } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const result = await getMileage(organizationId, assetId);
   if (result.status === 401) redirect("/auth");
   if (result.status === 400 || result.status === 404) notFound();
   return (
     <main>
       <p>
-        <Link href={`/organizations/${organizationId}/vehicles/${assetId}`}>
+        <Link href={`/${organizationSlug}/vehicles/${assetId}`}>
           Vehicle details
         </Link>
         {" · "}
-        <Link
-          href={`/organizations/${organizationId}/vehicles/${assetId}/maintenance`}
-        >
+        <Link href={`/${organizationSlug}/vehicles/${assetId}/maintenance`}>
           Maintenance schedules
         </Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
         <Link href="/auth">Account</Link>
       </p>

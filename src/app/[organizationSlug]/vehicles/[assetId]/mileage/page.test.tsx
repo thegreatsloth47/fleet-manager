@@ -1,3 +1,6 @@
+vi.mock("@/modules/organizations/page-access", () => ({
+  resolveOrganizationPage: async (slug: string) => slug,
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -13,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 import MileagePage from "./page";
 const props = {
-  params: Promise.resolve({ organizationId: "org", assetId: "asset" }),
+  params: Promise.resolve({ organizationSlug: "org", assetId: "asset" }),
 };
 const entry = {
   id: "entry",
@@ -85,8 +88,8 @@ test("empty history offers initialization and explicit unit selection", async ()
     "Starting total distance",
     "Includes distance from previous odometers",
     'aria-describedby="starting-total-distance-help"',
-    'href="/organizations/org/vehicles/asset/maintenance"',
-    'href="/organizations/org/dashboard"',
+    'href="/org/vehicles/asset/maintenance"',
+    'href="/org/dashboard"',
   ])
     expect(html).toContain(text);
 });

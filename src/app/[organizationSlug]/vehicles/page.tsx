@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAccessibleOrganizations } from "@/modules/organizations/queries";
@@ -9,10 +10,11 @@ export default async function VehiclesPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ organizationId: string }>;
+  params: Promise<{ organizationSlug: string }>;
   searchParams: Promise<{ archived?: string }>;
 }) {
-  const { organizationId } = await params;
+  const { organizationSlug } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const archived = (await searchParams).archived === "true";
   const result = await getVehicles(organizationId, { archived });
   if (result.status === 401) redirect("/auth");
@@ -20,17 +22,15 @@ export default async function VehiclesPage({
   const organization = result.data
     ? await getAccessibleOrganizations(organizationId)
     : undefined;
-  const path = `/organizations/${organizationId}/vehicles`;
+  const path = `/${organizationSlug}/vehicles`;
   return (
     <main>
       <p>
         <Link href="/organizations">Organizations</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/maintenance`}>
+        <Link href={`/${organizationSlug}/maintenance`}>
           Maintenance templates
         </Link>
         {" · "}

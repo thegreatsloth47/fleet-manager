@@ -1,4 +1,5 @@
 import {
+  organizationPath,
   test,
   expect,
   signIn,
@@ -40,11 +41,18 @@ test("protected routes, failed login, real password login, organization creation
   await page.reload();
   await expect(
     page.getByRole("link", { name: "Vehicles", exact: true }),
-  ).toHaveAttribute("href", `/organizations/${organization}/vehicles`);
+  ).toHaveAttribute("href", `${organizationPath(organization)}/vehicles`);
+  await page.getByRole("link", { name: "Vehicles", exact: true }).click();
+  await expect(page).toHaveURL(`${organizationPath(organization)}/vehicles`);
+  await page.goto(`/organizations/${organization}/vehicles`);
+  await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+  await page.goto(`/missing-${organization}/vehicles`);
+  await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+  await page.goto("/organizations");
   await page.getByRole("link", { name: "Account" }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/auth$/);
-  await page.goto(`/organizations/${organization}/vehicles`);
+  await page.goto(`${organizationPath(organization)}/vehicles`);
   await expect(page).toHaveURL(/\/auth$/);
   expect(
     (await browserRequest(page, `/api/organizations/${organization}/vehicles`))

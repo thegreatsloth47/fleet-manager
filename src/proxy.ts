@@ -34,5 +34,8 @@ export const config = {
     "/auth/:path*",
     "/organizations/:path*",
     "/api/organizations/:path*",
+    "/:organizationSlug/vehicles/:path*",
+    "/:organizationSlug/maintenance/:path*",
+    "/:organizationSlug/dashboard/:path*",
   ],
 };

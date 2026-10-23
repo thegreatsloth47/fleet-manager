@@ -1,3 +1,4 @@
+import { resolveOrganizationPage } from "@/modules/organizations/page-access";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getMaintenance } from "@/modules/maintenance/service";
@@ -7,9 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function VehicleMaintenancePage({
   params,
 }: {
-  params: Promise<{ organizationId: string; assetId: string }>;
+  params: Promise<{ organizationSlug: string; assetId: string }>;
 }) {
-  const { organizationId, assetId } = await params;
+  const { organizationSlug, assetId } = await params;
+  const organizationId = await resolveOrganizationPage(organizationSlug);
   const result = await getMaintenance(organizationId, assetId);
   if (result.status === 401) redirect("/auth");
   if (result.status === 400 || result.status === 404) notFound();
@@ -26,27 +28,21 @@ export default async function VehicleMaintenancePage({
   return (
     <main>
       <p>
-        <Link href={`/organizations/${organizationId}/vehicles/${assetId}`}>
+        <Link href={`/${organizationSlug}/vehicles/${assetId}`}>
           Vehicle details
         </Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/dashboard`}>
-          Dashboard
-        </Link>
+        <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link
-          href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}`}
-        >
+        <Link href={`/${organizationSlug}/maintenance?vehicle=${assetId}`}>
           Maintenance templates
         </Link>
         {" · "}
-        <Link
-          href={`/organizations/${organizationId}/vehicles/${assetId}/mileage`}
-        >
+        <Link href={`/${organizationSlug}/vehicles/${assetId}/mileage`}>
           Mileage
         </Link>
         {" · "}
-        <Link href={`/organizations/${organizationId}/vehicles`}>Vehicles</Link>
+        <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
         <Link href="/auth">Account</Link>
       </p>
@@ -86,14 +82,12 @@ export default async function VehicleMaintenancePage({
         ) : (
           <p>
             <Link
-              href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}#new-template`}
+              href={`/${organizationSlug}/maintenance?vehicle=${assetId}#new-template`}
             >
               Create a maintenance template
             </Link>{" "}
             to add another schedule, or{" "}
-            <Link
-              href={`/organizations/${organizationId}/maintenance?vehicle=${assetId}`}
-            >
+            <Link href={`/${organizationSlug}/maintenance?vehicle=${assetId}`}>
               enable an existing template
             </Link>
             .

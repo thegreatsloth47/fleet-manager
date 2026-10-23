@@ -307,6 +307,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          slug: string;
           status: string;
           timezone: string;
           created_at: string;
