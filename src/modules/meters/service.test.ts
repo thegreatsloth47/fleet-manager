@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ vehicles: vi.fn(), rpc: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/modules/assets/queries", () => ({ getVehicles: mocks.vehicles }));
@@ -14,12 +14,15 @@ const input = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.vehicles.mockResolvedValue({
     status: 200,
     data: { vehicles: [{ name: "Van", archived_at: null }], canManage: true },
   });
   mocks.rpc.mockResolvedValue({ data: [], error: null });
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 test.each([400, 401, 404, 500])(
   "propagates vehicle authorization/validation failure %s without meter access",
@@ -113,4 +116,32 @@ test("query failures and empty write responses are reported", async () => {
   mocks.rpc.mockResolvedValue({ data: null, error: null });
   expect((await recordMileage("org", "asset", input)).status).toBe(500);
   expect((await getMileage("org", "asset")).status).toBe(500);
+});
+
+test("unexpected meter failures retain diagnostic context only in server logs", async () => {
+  mocks.rpc.mockResolvedValue({
+    data: null,
+    error: {
+      code: "57014",
+      message: "canceling statement due to statement timeout",
+      details: "private detail",
+      hint: "private hint",
+    },
+  });
+  const result = await recordMileage("org", "asset", {
+    ...input,
+    reason: "private notes",
+  });
+  expect(result).toEqual({ status: 500, error: "Unable to record mileage." });
+  expect(console.error).toHaveBeenCalledWith("record_meter_command failed", {
+    organizationId: "org",
+    assetId: "asset",
+    commandId: input.command_id,
+    action: "reading",
+    code: "57014",
+    message: "canceling statement due to statement timeout",
+  });
+  expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(
+    "private",
+  );
 });

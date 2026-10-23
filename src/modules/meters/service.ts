@@ -79,6 +79,16 @@ export async function recordMileage(
         error:
           "Unable to save this reading. Check the earlier and later readings, starting total distance, old odometer’s final reading, and reading date and time.",
       };
+    // Preserve the backend cause for server-side diagnosis without exposing it
+    // to the browser or logging command contents, cookies, or credentials.
+    console.error("record_meter_command failed", {
+      organizationId,
+      assetId,
+      commandId: parsed.data.command_id,
+      action: parsed.data.action,
+      code: error.code,
+      message: error.message,
+    });
     return { status: 500, error: "Unable to record mileage." };
   }
   if (!data) return { status: 500, error: "Unable to record mileage." };

@@ -150,7 +150,43 @@ export async function saveMileage(
   await form
     .getByRole("button", { name: /^(Save mileage|Exclude reading)$/ })
     .click();
-  expect((await response).status()).toBe(expectedStatus);
+  const saved = await response;
+  if (saved.status() !== expectedStatus) {
+    // Record only this fixture's meter command and public API error. Full traces
+    // would also persist authentication cookies and passwords.
+    const request: unknown = saved.request().postDataJSON();
+    const command: Record<string, unknown> = {};
+    if (request && typeof request === "object") {
+      for (const key of [
+        "command_id",
+        "action",
+        "unit",
+        "observed_at",
+        "physical",
+        "old_final",
+        "baseline_usage",
+        "entry_id",
+        "expected_revision_id",
+      ]) {
+        if (Object.hasOwn(request, key))
+          command[key] = Reflect.get(request, key);
+      }
+    }
+    await test.info().attach("failed-mileage-command", {
+      body: JSON.stringify(
+        {
+          path: new URL(saved.url()).pathname,
+          status: saved.status(),
+          command,
+          response: await saved.text(),
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    });
+  }
+  expect(saved.status()).toBe(expectedStatus);
   await expect(form.locator("fieldset")).toBeEnabled();
   if (expectedStatus === 201)
     await expect(page.getByRole("status")).toHaveText("Mileage saved.");

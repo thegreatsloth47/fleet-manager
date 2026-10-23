@@ -474,7 +474,7 @@ export class Fixtures {
           .in("organization_id", orgIds);
         if (error)
           throw new Error(
-            `Cleanup failed for ${table}; retain manifest and retry cleanup.`,
+            `Cleanup failed for ${table}; retain manifest and retry cleanup. Database error ${error.code}: ${error.message}`,
           );
       }
       if (plan.assetIds.length) {
@@ -484,14 +484,18 @@ export class Fixtures {
           .in("asset_id", plan.assetIds)
           .in("organization_id", orgIds);
         if (profileError)
-          throw new Error("Vehicle profile cleanup failed; retain manifest.");
+          throw new Error(
+            `Vehicle profile cleanup failed; retain manifest. Database error ${profileError.code}: ${profileError.message}`,
+          );
         const { error: assetError } = await this.client
           .from("assets")
           .delete()
           .in("id", plan.assetIds)
           .in("organization_id", orgIds);
         if (assetError)
-          throw new Error("Asset cleanup failed; retain manifest.");
+          throw new Error(
+            `Asset cleanup failed; retain manifest. Database error ${assetError.code}: ${assetError.message}`,
+          );
       }
       for (const member of plan.memberships) {
         const { error } = await this.client
