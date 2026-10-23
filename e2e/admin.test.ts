@@ -42,10 +42,12 @@ const path = "/tmp/mock-recovery.json";
 let files: Record<string, string>;
 let rows: Record<string, Record<string, unknown>[]>;
 let failedTable: string | undefined;
+let lateMeter = false;
 const deletes: { table: string; filters: [string, unknown][] }[] = [];
 beforeEach(() => {
   vi.resetAllMocks();
   failedTable = undefined;
+  lateMeter = false;
   deletes.length = 0;
   files = {
     [path]: JSON.stringify(
@@ -149,6 +151,8 @@ beforeEach(() => {
               },
             }).then(resolve);
           rows[table] = [];
+          if (table === "meters" && lateMeter)
+            rows.meters = [{ id: id(98), asset_id: assetId }];
         }
         return Promise.resolve({
           data: preflight ? [] : rows[table],
@@ -226,4 +230,26 @@ test("new rows after a failed cleanup are not swept into its original deletion p
   );
   expect(deletes).toEqual([]);
   expect(JSON.parse(files[path]).deletionPlan).toEqual(original);
+});
+
+test("a late baseline meter is reported without extending the exact-ID deletion plan", async () => {
+  failedTable = "assets";
+  lateMeter = true;
+  await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+    `"id":"${id(98)}","asset_id":"${assetId}","inDeletionPlan":false`,
+  );
+  const saved = JSON.parse(files[path]);
+  expect(saved.deletionPlan.meterIds).toEqual([id(6)]);
+  expect(saved.cleaned).toBe(false);
+  expect(rows.meters).toEqual([{ id: id(98), asset_id: assetId }]);
+  expect(deletes.filter((d) => d.table === "meters")).toEqual([
+    {
+      table: "meters",
+      filters: [
+        ["id", [id(6)]],
+        ["organization_id", [orgId]],
+      ],
+    },
+  ]);
+  expect(mocks.deleteUser).not.toHaveBeenCalled();
 });

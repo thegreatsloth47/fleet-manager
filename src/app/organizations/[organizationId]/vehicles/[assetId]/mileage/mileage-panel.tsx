@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   auditLines,
@@ -28,7 +28,9 @@ export default function MileagePanel({
 }: Props) {
   const router = useRouter();
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [pending, setPending] = useState(false);
+  const [saving, setPending] = useState(false);
+  const [refreshing, startTransition] = useTransition();
+  const pending = saving || refreshing;
   const [message, setMessage] = useState("");
   const retry = useRef<{ signature: string; id: string } | null>(null);
   const current = currentMeterReading(history);
@@ -82,8 +84,12 @@ export default function MileagePanel({
         return;
       }
       setMessage("Mileage saved.");
-      setSelection(null);
-      router.refresh();
+      // Keep the old form disabled until refreshed history chooses the next
+      // command type. A successful baseline must not expose another baseline.
+      startTransition(() => {
+        setSelection(null);
+        router.refresh();
+      });
     } catch {
       setMessage(
         "Unable to confirm the save. Retry this form to safely check or complete the same submission.",

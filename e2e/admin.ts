@@ -492,10 +492,22 @@ export class Fixtures {
           .delete()
           .in("id", plan.assetIds)
           .in("organization_id", orgIds);
-        if (assetError)
+        if (assetError) {
+          // A timed-out baseline can arrive after inventory/deletion. Report
+          // surviving IDs, but never expand the saved plan or sweep new rows.
+          const { data: remainingMeters, error: remainingError } =
+            await this.client
+              .from("meters")
+              .select("id,asset_id")
+              .in("asset_id", plan.assetIds)
+              .in("organization_id", orgIds);
+          const remaining = remainingError
+            ? "Unable to inspect remaining meters."
+            : `Remaining meters: ${JSON.stringify(remainingMeters?.map((meter) => ({ ...meter, inDeletionPlan: plan.meterIds.includes(meter.id) })) ?? [])}.`;
           throw new Error(
-            `Asset cleanup failed; retain manifest. Database error ${assetError.code}: ${assetError.message}`,
+            `Asset cleanup failed; retain manifest. Database error ${assetError.code}: ${assetError.message}. ${remaining}`,
           );
+        }
       }
       for (const member of plan.memberships) {
         const { error } = await this.client

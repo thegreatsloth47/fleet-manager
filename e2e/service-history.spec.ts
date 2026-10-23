@@ -7,6 +7,7 @@ import {
   createOrganization,
   createVehicle,
   saveMileage,
+  usage,
   browserRequest,
 } from "./fixtures";
 
@@ -71,7 +72,17 @@ test("completed service advances selected schedules and rejects conflicting back
   const vehicle = await createVehicle(page, fixtures, org);
   await page.getByRole("link", { name: "Mileage", exact: true }).click();
   await saveMileage(page, { physical: "10000", observed: "2020-01-01T12:00" });
+  await usage(page, "10000", "10000");
+  const readingRequest = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/mileage") && request.method() === "POST",
+  );
   await saveMileage(page, { physical: "20000", observed: "2020-12-01T12:00" });
+  expect((await readingRequest).postDataJSON()).toMatchObject({
+    action: "reading",
+    physical: "20000",
+  });
+  await usage(page, "20000", "20000");
   await createSchedule(page, org, vehicle, "Combined", true);
   await createSchedule(page, org, vehicle, "Inspection", false);
   await page.goto(vehicle);
