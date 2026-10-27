@@ -65,6 +65,8 @@ test("passes refreshed auth cookies to the downstream request and browser with p
 });
 
 test.each([
+  "/account",
+  "/auth",
   "/acme-plumbing/vehicles",
   "/acme-plumbing/vehicles/vehicle-id/service-history",
   "/acme-plumbing/maintenance",

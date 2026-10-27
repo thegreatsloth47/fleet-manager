@@ -32,7 +32,7 @@ export default async function DashboardPage({
           Maintenance templates
         </Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <p>{result.data.organizationName}</p>
       <h1>Dashboard</h1>

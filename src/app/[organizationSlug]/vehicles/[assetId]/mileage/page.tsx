@@ -30,7 +30,7 @@ export default async function MileagePage({
         {" · "}
         <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <h1>
         {result.data ? `${result.data.vehicleName} — Mileage` : "Mileage"}

@@ -44,7 +44,7 @@ export default async function VehicleMaintenancePage({
         {" · "}
         <Link href={`/${organizationSlug}/vehicles`}>Vehicles</Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <h1>{result.data.vehicleName} — Maintenance schedules</h1>
       {!canManage && <p>Maintenance is read-only.</p>}

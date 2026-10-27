@@ -40,7 +40,7 @@ export default async function OrganizationsPage() {
       )}
       <CreateOrganizationForm />
       <p>
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
     </main>
   );

@@ -37,6 +37,7 @@ test("renders only organizations returned by the authorized server query", async
   });
   const html = renderToStaticMarkup(await OrganizationsPage());
   expect(html).toContain("Team A");
+  expect(html).toContain('href="/account"');
   expect(html).toContain("/team-a/vehicles");
   expect(html).toContain("Create organization form");
 });
@@ -59,5 +60,6 @@ test("drivers see their organization without vehicle management navigation", asy
   });
   const html = renderToStaticMarkup(await OrganizationsPage());
   expect(html).toContain("Team A");
+  expect(html).toContain('href="/account"');
   expect(html).not.toContain("/vehicles");
 });

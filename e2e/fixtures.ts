@@ -40,6 +40,10 @@ export const test = base.extend<{ fixtures: Fixtures }>({
 
 export async function signIn(page: Page, user: TestUser) {
   await page.goto("/auth");
+  if (new URL(page.url()).pathname === "/account") {
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page).toHaveURL(/\/auth$/);
+  }
   await page.getByLabel("Email", { exact: true }).fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

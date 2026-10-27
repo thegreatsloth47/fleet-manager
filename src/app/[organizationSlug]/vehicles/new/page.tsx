@@ -22,7 +22,7 @@ export default async function NewVehiclePage({
         {" · "}
         <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <h1>Add vehicle</h1>
       {access.error ? (

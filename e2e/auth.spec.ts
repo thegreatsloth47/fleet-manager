@@ -50,8 +50,23 @@ test("protected routes, failed login, real password login, organization creation
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   await page.goto("/organizations");
   await page.getByRole("link", { name: "Account" }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(
+    page.getByRole("heading", { name: "Account", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(owner.email, { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(owner.email, { exact: true })).toBeVisible();
+  await page.goto("/auth");
+  await expect(page).toHaveURL(/\/account$/);
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/auth$/);
+  await page.goto("/account");
+  await expect(page).toHaveURL(/\/auth$/);
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toHaveCount(0);
   await page.goto(`${organizationPath(organization)}/vehicles`);
   await expect(page).toHaveURL(/\/auth$/);
   expect(

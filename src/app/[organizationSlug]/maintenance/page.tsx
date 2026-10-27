@@ -42,7 +42,7 @@ export default async function MaintenancePage({
       <p>
         <Link href="/organizations">Organizations</Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <p>
         <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>

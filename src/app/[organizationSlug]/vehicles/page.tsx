@@ -34,7 +34,7 @@ export default async function VehiclesPage({
           Maintenance templates
         </Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <p>{organization?.body.organizations?.[0]?.name}</p>
       <h1>{archived ? "Archived vehicles" : "Vehicles"}</h1>

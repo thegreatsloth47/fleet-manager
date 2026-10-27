@@ -37,7 +37,7 @@ export default async function VehiclePage({
         {" · "}
         <Link href={`/${organizationSlug}/dashboard`}>Dashboard</Link>
         {" · "}
-        <Link href="/auth">Account</Link>
+        <Link href="/account">Account</Link>
       </p>
       <h1>{vehicle.name}</h1>
       <p>
