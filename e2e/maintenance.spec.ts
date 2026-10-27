@@ -385,3 +385,81 @@ test("maintenance owners/admins manage, readers view, and drivers, foreign tenan
   await page.reload();
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
 });
+
+test("template edits explicitly propagate with a count and protect customized schedules", async ({
+  page,
+  fixtures,
+}) => {
+  const owner = await fixtures.user("owner");
+  await signIn(page, owner);
+  const org = await createOrganization(page, fixtures, owner);
+  const vehicle = await createVehicle(page, fixtures, org);
+  await createTemplate(page, org, "Inspection", undefined, "30");
+  await assign(page, vehicle, "Inspection", undefined, "2026-12-01");
+  await page.goto(`${organizationPath(org)}/maintenance`);
+  await schedule(page, "Inspection").locator("summary").click();
+  await expect(
+    page.getByLabel("Template and future schedules only"),
+  ).toBeChecked();
+  await schedule(page, "Inspection")
+    .getByLabel("Time between services", { exact: true })
+    .fill("60");
+  await saveForm(page, schedule(page, "Inspection"), "Save template", 200);
+  await page.goto(`${vehicle}/maintenance`);
+  await schedule(page, "Inspection")
+    .getByText("Edit schedule", { exact: true })
+    .click();
+  await expect(
+    schedule(page, "Inspection").getByLabel("Time between services", {
+      exact: true,
+    }),
+  ).toHaveValue("30");
+  await expect(
+    schedule(page, "Inspection").getByLabel("Next due date"),
+  ).toHaveValue("2026-12-01");
+  await page.goto(`${organizationPath(org)}/maintenance`);
+  await schedule(page, "Inspection").locator("summary").click();
+  await page.getByLabel("Also update existing linked schedules").check();
+  await expect(
+    page.getByText(/Saving will update 1 existing schedules/),
+  ).toBeVisible();
+  await saveForm(page, schedule(page, "Inspection"), "Save template", 200);
+  await page.goto(`${vehicle}/maintenance`);
+  await schedule(page, "Inspection")
+    .getByText("Edit schedule", { exact: true })
+    .click();
+  await expect(
+    schedule(page, "Inspection").getByLabel("Time between services", {
+      exact: true,
+    }),
+  ).toHaveValue("60");
+  await expect(
+    schedule(page, "Inspection").getByLabel("Next due date"),
+  ).toHaveValue("2026-12-31");
+  await schedule(page, "Inspection")
+    .getByLabel("Time between services", { exact: true })
+    .fill("45");
+  await saveForm(page, schedule(page, "Inspection"), "Save schedule", 200);
+  await page.goto(`${organizationPath(org)}/maintenance`);
+  await schedule(page, "Inspection").locator("summary").click();
+  await page.getByLabel("Also update existing linked schedules").check();
+  await expect(
+    page.getByText(/Saving will update 0 existing schedules/),
+  ).toBeVisible();
+  await schedule(page, "Inspection")
+    .getByLabel("Time between services", { exact: true })
+    .fill("90");
+  await saveForm(page, schedule(page, "Inspection"), "Save template", 200);
+  await page.goto(`${vehicle}/maintenance`);
+  await schedule(page, "Inspection")
+    .getByText("Edit schedule", { exact: true })
+    .click();
+  await expect(
+    schedule(page, "Inspection").getByLabel("Time between services", {
+      exact: true,
+    }),
+  ).toHaveValue("45");
+  await expect(
+    schedule(page, "Inspection").getByLabel("Next due date"),
+  ).toHaveValue("2026-12-31");
+});

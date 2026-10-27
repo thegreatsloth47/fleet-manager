@@ -117,16 +117,19 @@ export default function MaintenanceForm({
   assignment,
   assetId,
   templates = [],
+  scheduleVersions = {},
 }: {
   organizationId: string;
   template?: Template;
   assignment?: Assignment;
   assetId?: string;
   templates?: Template[];
+  scheduleVersions?: Record<string, number>;
 }) {
   const router = useRouter();
   const id = useId();
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [updateExisting, setUpdateExisting] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
@@ -175,7 +178,12 @@ export default function MaintenanceForm({
             next_due_date: values.get("next_due_date") || null,
             paused: values.get("paused") === "on",
           }
-        : { enabled: values.get("enabled") === "on" }),
+        : {
+            enabled: values.get("enabled") === "on",
+            ...(template && updateExisting
+              ? { update_existing: true, schedule_versions: scheduleVersions }
+              : {}),
+          }),
     };
     setPending(true);
     setError("");
@@ -309,6 +317,49 @@ export default function MaintenanceForm({
               Template enabled
             </label>
           </p>
+        )}
+        {assignment && (
+          <p>
+            {assignment.template_overridden
+              ? "Customized schedule: template updates will not overwrite these settings."
+              : "Linked schedule: template updates can update these settings. Changing the service name, intervals, or alert windows here protects this schedule from template updates."}
+          </p>
+        )}
+        {template && !assetId && (
+          <fieldset>
+            <legend>Apply template changes to</legend>
+            <label>
+              <input
+                type="radio"
+                name="update_scope"
+                checked={!updateExisting}
+                onChange={() => setUpdateExisting(false)}
+              />{" "}
+              Template and future schedules only
+            </label>
+            <br />
+            <label>
+              <input
+                type="radio"
+                name="update_scope"
+                checked={updateExisting}
+                onChange={() => setUpdateExisting(true)}
+              />{" "}
+              Also update existing linked schedules
+            </label>
+            {updateExisting && (
+              <p role="status">
+                Saving will update {Object.keys(scheduleVersions).length}{" "}
+                existing schedules. Customized schedules and archived vehicles
+                are excluded. Due targets will be recalculated from existing
+                maintenance baselines; no service completion will be recorded.
+              </p>
+            )}
+            <p>
+              Enabling or disabling this template always controls alerts for all
+              its schedules.
+            </p>
+          </fieldset>
         )}
         <button disabled={!rule}>
           {pending

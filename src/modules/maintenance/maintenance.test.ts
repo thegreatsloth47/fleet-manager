@@ -5,10 +5,14 @@ import {
   organizationDate,
   parseMaintenance,
   shiftCalendar,
+  templateScheduleVersions,
   type Assignment,
 } from "./maintenance";
 const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const schedule: Assignment = {
+  template_overridden: false,
+  baseline_usage: 0,
+  baseline_date: "2026-01-01",
   ...defaultRule,
   name: "Oil",
   distance_interval: 1000,
@@ -214,4 +218,77 @@ test("explicit targets can already be overdue; targets must match interval dimen
       true,
     ).status,
   ).toBe(200);
+});
+
+test("propagation requires explicit intent and a valid confirmed schedule set", () => {
+  const template = {
+    ...defaultRule,
+    id,
+    expected_version: 1,
+    name: "Oil",
+    time_interval: 1,
+    time_unit: "months",
+    enabled: true,
+  };
+  expect(
+    parseMaintenance(template, false).data?.update_existing,
+  ).toBeUndefined();
+  expect(
+    parseMaintenance({ ...template, update_existing: true }, false).status,
+  ).toBe(400);
+  expect(
+    parseMaintenance(
+      { ...template, update_existing: true, schedule_versions: { [id]: 2 } },
+      false,
+    ).data?.schedule_versions,
+  ).toEqual({ [id]: 2 });
+  for (const schedule_versions of [
+    [],
+    null,
+    { bad: 2 },
+    { [id]: 0 },
+    { [id]: "2" },
+  ]) {
+    expect(
+      parseMaintenance(
+        { ...template, update_existing: true, schedule_versions },
+        false,
+      ).status,
+    ).toBe(400);
+  }
+  expect(
+    parseMaintenance(
+      {
+        ...template,
+        update_existing: true,
+        schedule_versions: {},
+        expected_version: 0,
+      },
+      false,
+    ).status,
+  ).toBe(400);
+});
+
+test("confirmation includes only linked schedules on active vehicles", () => {
+  expect(
+    templateScheduleVersions(
+      [
+        { ...schedule, archived: false },
+        {
+          ...schedule,
+          id: "custom",
+          template_overridden: true,
+          archived: false,
+        },
+        { ...schedule, id: "archived", archived: true },
+        {
+          ...schedule,
+          id: "other",
+          template_id: "other-template",
+          archived: false,
+        },
+      ],
+      id,
+    ),
+  ).toEqual({ [schedule.id]: schedule.version });
 });

@@ -166,3 +166,25 @@ test.each([
   expect(result.status).toBe(status);
   expect(result.error).not.toContain("Private");
 });
+
+test("explicit propagation passes the confirmed schedule versions through the authorized RPC", async () => {
+  mocks.rpc.mockResolvedValue({ data: org, error: null });
+  const command = {
+    ...input,
+    expected_version: 1,
+    update_existing: true,
+    schedule_versions: { [asset]: 3 },
+  };
+  expect((await saveMaintenance(org, null, command)).status).toBe(200);
+  expect(mocks.rpc).toHaveBeenCalledWith("save_maintenance", {
+    target_organization_id: org,
+    target_asset_id: null,
+    payload: command,
+  });
+  mocks.rpc.mockResolvedValue({ data: null, error: { code: "PT409" } });
+  expect((await saveMaintenance(org, null, command)).status).toBe(409);
+  mocks.rpc.mockResolvedValue({ data: null, error: { code: "P1001" } });
+  expect((await saveMaintenance(org, null, command)).error).toContain(
+    "baseline",
+  );
+});

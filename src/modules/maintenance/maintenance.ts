@@ -16,6 +16,9 @@ export type Template = Rule & {
   updated_at: string;
 };
 export type Assignment = Rule & {
+  template_overridden: boolean;
+  baseline_usage: number | null;
+  baseline_date: string | null;
   id: string;
   organization_id: string;
   asset_id: string;
@@ -33,6 +36,8 @@ export type MaintenanceCommand = Rule & {
   id: string;
   expected_version: number;
   enabled?: boolean;
+  update_existing?: boolean;
+  schedule_versions?: Record<string, number>;
   template_id?: string;
   next_due_usage?: number | null;
   next_due_date?: string | null;
@@ -96,7 +101,13 @@ export function parseMaintenance(
       : ["enabled"]),
   ];
   if (
-    Object.keys(v).some((key) => !fields.includes(key)) ||
+    Object.keys(v).some(
+      (key) =>
+        !fields.includes(key) &&
+        !(
+          !assignment && ["update_existing", "schedule_versions"].includes(key)
+        ),
+    ) ||
     fields.some((key) => !(key in v))
   )
     return invalid;
@@ -168,10 +179,38 @@ export function parseMaintenance(
     upcoming_percent: v.upcoming_percent,
     due_percent: v.due_percent,
   };
-  if (!assignment)
+  if (!assignment) {
+    if (
+      v.update_existing !== undefined &&
+      typeof v.update_existing !== "boolean"
+    )
+      return invalid;
+    if (v.update_existing === true) {
+      if (
+        v.expected_version === 0 ||
+        !v.schedule_versions ||
+        typeof v.schedule_versions !== "object" ||
+        Array.isArray(v.schedule_versions)
+      )
+        return invalid;
+      const versions: Record<string, number> = {};
+      for (const [key, value] of Object.entries(v.schedule_versions)) {
+        if (
+          !validId(key) ||
+          typeof value !== "number" ||
+          !Number.isInteger(value) ||
+          value < 1
+        )
+          return invalid;
+        versions[key] = value;
+      }
+      rule.update_existing = true;
+      rule.schedule_versions = versions;
+    } else if (v.schedule_versions !== undefined) return invalid;
     return typeof v.enabled === "boolean"
       ? { status: 200, data: { ...rule, enabled: v.enabled } }
       : invalid;
+  }
   if (!validId(v.template_id) || typeof v.paused !== "boolean") return invalid;
   if (di === null ? v.next_due_usage !== null : !distance(v.next_due_usage))
     return invalid;
@@ -281,4 +320,22 @@ export function maintenanceState(
     remainingDays,
     missingUsage: rule.distance_interval !== null && usage === null,
   };
+}
+
+// A schedule's local configuration is protected as a whole; pause and due-target
+// edits do not detach otherwise inherited configuration.
+export function templateScheduleVersions(
+  items: (Assignment & { archived: boolean })[],
+  templateId: string,
+): Record<string, number> {
+  return Object.fromEntries(
+    items
+      .filter(
+        (item) =>
+          item.template_id === templateId &&
+          !item.template_overridden &&
+          !item.archived,
+      )
+      .map((item) => [item.id, item.version]),
+  );
 }

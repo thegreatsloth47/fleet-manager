@@ -188,11 +188,17 @@ export async function saveMaintenance(
         status: 404,
         error: "Vehicle, template, or schedule not found.",
       };
-    if (["40001", "23505"].includes(error.code))
+    if (["40001", "PT409", "23505"].includes(error.code))
       return {
         status: 409,
         error:
           "This schedule already exists or maintenance changed. Reload before saving.",
+      };
+    if (error.code === "P1001")
+      return {
+        status: 400,
+        error:
+          "Existing schedules need a compatible distance unit and maintenance baseline. Set the missing interval and next-due target on the vehicle schedule, or save this template for future schedules only.",
       };
     if (error.code === "55000")
       return {

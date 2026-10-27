@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getVehicles } from "@/modules/assets/queries";
 import { getMaintenance } from "@/modules/maintenance/service";
+import { templateScheduleVersions } from "@/modules/maintenance/maintenance";
 import MaintenanceForm from "./maintenance-form";
 export const dynamic = "force-dynamic";
 export default async function MaintenancePage({
@@ -62,9 +63,10 @@ export default async function MaintenancePage({
       )}
       <p>
         Set how often a service is needed, then add it to a vehicle’s
-        maintenance schedules. Editing a template only changes schedules added
-        later. Existing schedules keep their settings. Disabling a template
-        hides alerts for its schedules without changing when service is due.
+        maintenance schedules. When editing a template, choose future schedules
+        only or also update linked schedules. Customized schedules and archived
+        vehicles keep their settings. Disabling a template hides alerts for its
+        schedules without changing when service is due.
       </p>
       {!result.data.canManage && <p>Maintenance is read-only.</p>}
       {result.data.canManage && (
@@ -91,6 +93,10 @@ export default async function MaintenancePage({
                 key={`${t.id}-${t.version}`}
                 organizationId={organizationId}
                 template={t}
+                scheduleVersions={templateScheduleVersions(
+                  result.data!.items,
+                  t.id,
+                )}
               />
             </details>
           )}

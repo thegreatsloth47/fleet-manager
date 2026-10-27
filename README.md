@@ -733,8 +733,16 @@ access. The dashboard is linked from Organizations and Vehicles.
   shifted backward by the calendar interval; percentage windows round upward to
   whole days. UTC date arithmetic avoids DST changing calendar-day distances.
   Status is evaluated on reads; there are no scheduled jobs in this increment.
-- Assignment settings are copied from the template. Later template edits apply
-  only to future assignments; existing assignments have explicit edit controls.
+- Assignment settings are copied from the template. Template edits default to future assignments only. Owners/admins can explicitly
+  include existing linked schedules after seeing their count. Customized schedules
+  and archived vehicles are excluded; stale confirmations reject the whole save.
+  Local name/interval/window edits permanently protect the schedule as customized;
+  pause and next-due edits retain linkage and update the maintenance baseline.
+  Interval propagation uses that baseline, not current mileage or today's date,
+  and never records completed service. Missing baselines or incompatible meter
+  units reject propagation with guidance to configure the vehicle schedule.
+  Existing divergent or historically manually edited schedules are conservatively
+  protected during migration. Reattaching customized schedules is not exposed.
   A vehicle has at most one assignment of a given template. Optimistic versions
   reject stale template/schedule edits rather than overwriting newer changes.
 - Pausing a schedule retains its targets and suppresses its alerts. Disabling a
@@ -764,6 +772,10 @@ qualifying service can reference the assignment and atomically advance distance 
 records, completion actions, documents, notifications, offline queues, or jobs.
 
 ### Maintenance migration and verification
+
+The follow-up migration `supabase/migrations/20261026000000_template_propagation.sql`
+adds customization flags, maintenance baselines, and RLS-protected append-only
+maintenance revisions, and preserves baselines through service completion/reversal.
 
 Review `supabase/migrations/20260924000000_maintenance.sql`. It creates
 `maintenance_templates`, `maintenance_assignments`, their constraints/RLS, the

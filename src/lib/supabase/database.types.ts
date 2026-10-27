@@ -23,6 +23,21 @@ type Json =
 export type Database = {
   public: {
     Tables: {
+      maintenance_revisions: {
+        Row: {
+          id: number;
+          organization_id: string;
+          record_id: string;
+          record_type: "template" | "schedule";
+          version: number;
+          snapshot: Json;
+          actor_id: string;
+          recorded_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       service_records: {
         Row: ServiceRecord;
         Insert: ServiceRecord;
