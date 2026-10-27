@@ -16,6 +16,7 @@ type DeletionPlan = {
   revisionIds: string[];
   templateIds?: string[];
   assignmentIds?: string[];
+  maintenanceRevisionIds?: number[];
   serviceIds?: string[];
   serviceRevisionIds?: string[];
   serviceEffectIds?: string[];
@@ -117,6 +118,7 @@ export class Fixtures {
       "meter_revisions",
       "maintenance_templates",
       "maintenance_assignments",
+      "maintenance_revisions",
       "service_records",
       "service_revisions",
       "service_schedule_effects",
@@ -401,6 +403,45 @@ export class Fixtures {
         )
       )
         throw new Error("Unexpected service history; cleanup stopped.");
+      const { data: maintenanceRevisions, error: maintenanceRevisionError } =
+        await this.client
+          .from("maintenance_revisions")
+          .select("id,organization_id,record_id,record_type,actor_id,snapshot")
+          .in("organization_id", orgIds);
+      const priorPlan = this.manifest.deletionPlan;
+      // Recovery may already have deleted the source schedules/templates. Only
+      // their previously verified IDs can establish ownership in that case.
+      const templateIds =
+        priorPlan?.templateIds ?? templates.map((row) => row.id);
+      const assignmentIds =
+        priorPlan?.assignmentIds ?? assignments.map((row) => row.id);
+      if (
+        maintenanceRevisionError ||
+        maintenanceRevisions.some((row) => {
+          const snapshot = row.snapshot;
+          return (
+            !Number.isSafeInteger(row.id) ||
+            row.id < 1 ||
+            !orgIds.includes(row.organization_id) ||
+            !userIds.includes(row.actor_id) ||
+            !(
+              row.record_type === "template"
+                ? templateIds
+                : row.record_type === "schedule"
+                  ? assignmentIds
+                  : []
+            ).includes(row.record_id) ||
+            !snapshot ||
+            typeof snapshot !== "object" ||
+            Array.isArray(snapshot) ||
+            snapshot.id !== row.record_id ||
+            snapshot.organization_id !== row.organization_id
+          );
+        })
+      )
+        throw new Error(
+          "Unexpected maintenance audit evidence; cleanup stopped.",
+        );
       const inventory: DeletionPlan = {
         organizationIds: orgIds,
         assetIds: assets.map((row) => row.id),
@@ -409,6 +450,7 @@ export class Fixtures {
         revisionIds: revisions.map((row) => row.id),
         templateIds: templates.map((row) => row.id),
         assignmentIds: assignments.map((row) => row.id),
+        maintenanceRevisionIds: maintenanceRevisions.map((row) => row.id),
         serviceIds: services.map((row) => row.id),
         serviceRevisionIds: serviceRevisions.map((row) => row.id),
         serviceEffectIds: serviceEffects.map((row) => row.id),
@@ -449,6 +491,21 @@ export class Fixtures {
           throw new Error(
             "Membership changed after cleanup started; manual review required.",
           );
+        if (prior.maintenanceRevisionIds === undefined) {
+          // Older plans omitted this dependency. Adopt only the audit rows
+          // validated against their original source IDs and fixture actors above,
+          // then persist the exact IDs before attempting any further deletion.
+          prior.maintenanceRevisionIds = inventory.maintenanceRevisionIds;
+          this.persist();
+        } else if (
+          inventory.maintenanceRevisionIds!.some(
+            (id) => !prior.maintenanceRevisionIds!.includes(id),
+          )
+        ) {
+          throw new Error(
+            "Fixture changed after cleanup started; manual review required.",
+          );
+        }
       } else {
         this.manifest.deletionPlan = inventory;
         this.persist();
@@ -460,6 +517,7 @@ export class Fixtures {
         ["service_schedule_effects", plan.serviceEffectIds ?? []],
         ["service_revisions", plan.serviceRevisionIds ?? []],
         ["service_records", plan.serviceIds ?? []],
+        ["maintenance_revisions", plan.maintenanceRevisionIds ?? []],
         ["maintenance_assignments", plan.assignmentIds ?? []],
         ["maintenance_templates", plan.templateIds ?? []],
         ["meter_revisions", plan.revisionIds],
@@ -523,7 +581,9 @@ export class Fixtures {
         .delete()
         .in("id", orgIds);
       if (organizationError)
-        throw new Error("Organization cleanup failed; retain manifest.");
+        throw new Error(
+          `Organization cleanup failed; retain manifest. Database error ${organizationError.code}: ${organizationError.message}`,
+        );
     }
     for (const user of this.manifest.users) {
       const { error } = await this.client.auth.admin.deleteUser(user.id);
@@ -623,6 +683,18 @@ export function validManifest(value: unknown): value is Manifest {
       if (key === "organizationIds" && ids.some((id) => !orgIds.includes(id)))
         return false;
     }
+    const maintenanceRevisionIds: unknown = Reflect.get(
+      plan,
+      "maintenanceRevisionIds",
+    );
+    if (
+      maintenanceRevisionIds !== undefined &&
+      (!Array.isArray(maintenanceRevisionIds) ||
+        !maintenanceRevisionIds.every(
+          (id) => typeof id === "number" && Number.isSafeInteger(id) && id > 0,
+        ))
+    )
+      return false;
     const memberships: unknown = Reflect.get(plan, "memberships");
     if (
       !Array.isArray(memberships) ||

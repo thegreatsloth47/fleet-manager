@@ -28,7 +28,7 @@ vi.mock("@supabase/supabase-js", () => ({
     },
   }),
 }));
-import { Fixtures } from "./admin";
+import { Fixtures, validManifest } from "./admin";
 const id = (n: number) =>
   `aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, "0")}`;
 const runId = id(1),
@@ -102,6 +102,16 @@ beforeEach(() => {
     maintenance_assignments: [
       { id: id(10), asset_id: assetId, template_id: id(9), updated_by: userId },
     ],
+    maintenance_revisions: [
+      {
+        id: 14,
+        organization_id: orgId,
+        record_type: "schedule",
+        record_id: id(10),
+        actor_id: userId,
+        snapshot: { id: id(10), organization_id: orgId },
+      },
+    ],
     service_records: [{ id: id(11), asset_id: assetId, updated_by: userId }],
     service_revisions: [
       { id: id(12), asset_id: assetId, service_id: id(11), actor_id: userId },
@@ -169,6 +179,7 @@ test("service dependencies are deleted before schedules, meters and assets, usin
     "service_schedule_effects",
     "service_revisions",
     "service_records",
+    "maintenance_revisions",
     "maintenance_assignments",
     "maintenance_templates",
     "meter_revisions",
@@ -179,7 +190,7 @@ test("service dependencies are deleted before schedules, meters and assets, usin
     "memberships",
     "organizations",
   ]);
-  for (const deletion of deletes.slice(0, 10)) {
+  for (const deletion of deletes.slice(0, 11)) {
     expect(deletion.filters).toContainEqual(["organization_id", [orgId]]);
     expect(
       deletion.filters.some(
@@ -252,4 +263,96 @@ test("a late baseline meter is reported without extending the exact-ID deletion 
     },
   ]);
   expect(mocks.deleteUser).not.toHaveBeenCalled();
+});
+
+test("old interrupted plans recover orphaned maintenance audit rows using saved source IDs", async () => {
+  failedTable = "organizations";
+  await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+    "Organization cleanup failed; retain manifest. Database error 23503",
+  );
+  const manifest = JSON.parse(files[path]);
+  delete manifest.deletionPlan.maintenanceRevisionIds;
+  files[path] = JSON.stringify(manifest);
+  rows.maintenance_revisions = [
+    {
+      id: 14,
+      organization_id: orgId,
+      record_type: "schedule",
+      record_id: id(10),
+      actor_id: userId,
+      snapshot: { id: id(10), organization_id: orgId },
+    },
+  ];
+  expect(rows.maintenance_assignments).toEqual([]);
+  expect(rows.memberships).toEqual([]);
+  failedTable = undefined;
+  deletes.length = 0;
+  await new Fixtures(runId, path).cleanup();
+  expect(JSON.parse(files[path]).deletionPlan.maintenanceRevisionIds).toEqual([
+    14,
+  ]);
+  expect(JSON.parse(files[path]).cleaned).toBe(true);
+  expect(
+    deletes.find((d) => d.table === "maintenance_revisions")?.filters,
+  ).toEqual([
+    ["id", [14]],
+    ["organization_id", [orgId]],
+  ]);
+});
+
+test.each(["actor", "source", "snapshot", "tenant"])(
+  "unexpected maintenance audit %s stops cleanup before deletion",
+  async (kind) => {
+    const row = rows.maintenance_revisions[0];
+    if (kind === "actor") row.actor_id = id(99);
+    if (kind === "source") row.record_id = id(99);
+    if (kind === "snapshot")
+      row.snapshot = { id: id(99), organization_id: orgId };
+    if (kind === "tenant") row.organization_id = id(99);
+    await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+      "Unexpected maintenance audit evidence",
+    );
+    expect(deletes).toEqual([]);
+  },
+);
+
+test("maintenance audit rows arriving after a saved plan are never swept into recovery", async () => {
+  failedTable = "maintenance_revisions";
+  await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+    "Cleanup failed for maintenance_revisions",
+  );
+  const original = JSON.parse(files[path]).deletionPlan;
+  rows.maintenance_revisions.push({ ...rows.maintenance_revisions[0], id: 15 });
+  deletes.length = 0;
+  await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+    "Fixture changed after cleanup started",
+  );
+  expect(deletes).toEqual([]);
+  expect(JSON.parse(files[path]).deletionPlan).toEqual(original);
+});
+
+test("maintenance audit recovery IDs must be positive safe integers", async () => {
+  failedTable = "maintenance_revisions";
+  await expect(new Fixtures(runId, path).cleanup()).rejects.toThrow(
+    "Cleanup failed",
+  );
+  const manifest = JSON.parse(files[path]);
+  expect(validManifest(manifest)).toBe(true);
+  for (const value of [
+    ["14"],
+    [-1],
+    [1.5],
+    [Number.MAX_SAFE_INTEGER + 1],
+    null,
+  ]) {
+    expect(
+      validManifest({
+        ...manifest,
+        deletionPlan: {
+          ...manifest.deletionPlan,
+          maintenanceRevisionIds: value,
+        },
+      }),
+    ).toBe(false);
+  }
 });
