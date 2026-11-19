@@ -133,11 +133,7 @@ export default function VehicleForm({
         <p>
           <label>
             Description{" "}
-            <textarea
-              name="description"
-              maxLength={4000}
-              defaultValue=""
-            />
+            <textarea name="description" maxLength={4000} defaultValue="" />
           </label>
         </p>
         <button>
