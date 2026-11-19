@@ -29,6 +29,8 @@ jobs:
         run: npm run typecheck
       - name: Test
         run: npm test
+      - name: Test hosted repair safeguards
+        run: npm run test:repair
       - name: Build
         run: npm run build
   tenant-isolation:

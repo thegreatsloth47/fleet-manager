@@ -1,8 +1,13 @@
 name: Hosted E2E
+run-name: Hosted E2E ${{ inputs.automation_id || github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
+      automation_id:
+        description: "Optional correlation ID for the bounded local repair runner"
+        required: false
+        type: string
       project_ref:
         description: "Confirm the dedicated E2E Supabase project ref (never the existing development project)"
         required: true

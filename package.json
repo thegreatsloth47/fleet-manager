@@ -19,7 +19,9 @@
     "db:reset": "supabase db reset",
     "test:db": "supabase test db",
     "db:types": "supabase gen types typescript --local",
-    "test:e2e": "node e2e/run.mjs"
+    "test:e2e": "node e2e/run.mjs",
+    "e2e:repair": "node e2e/repair.mjs",
+    "test:repair": "node --test e2e/repair.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
