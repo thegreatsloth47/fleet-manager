@@ -115,7 +115,46 @@ network sandbox escalation. No credentials were copied or changed.
 - Existing regression coverage verifies classification, retry/repair limits,
   artifact download recovery, redaction and protected repair paths.
 
-Hosted dispatch, live identity/migration verification, browser execution and
-same-commit CI validation are pending the execution recorded below. A real
-Codex application repair is only appropriate if repeated hosted assertions occur;
-passing runs do not demonstrate that path. No merge is authorized or performed.
+### Hosted execution result
+
+Implementation commit `a61b6f6048815ad172fa3faecc48a9f208f9c755` was pushed
+to `f/setup-environment`. The runner dispatched and correlated
+[Hosted E2E run 44579422081](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579422081)
+and verified its commit. Target confirmation passed, but the read-only hosted
+preflight failed with `Isolated E2E admin credential validation failed.`
+Browser tests and fixture creation never started. This message does not prove
+that the stored credential is invalid: a subsequent credential-free lookup
+failed to resolve the project hostname, and Google's public DNS returned
+NXDOMAIN (Status 3) for `wbiefcpcamynmduexvjk.supabase.co`.
+
+The runner classified the failure as infrastructure, downloaded failed logs and
+available artifacts into private ignored storage, and stopped with one hosted
+run and zero repair attempts. Invoking `--resume` preserved that terminal stop
+and dispatched nothing. Budgets and evidence remain intact in
+`.e2e-runs/automation/`; no execution was reset or archived.
+
+[Same-commit CI run 44579419452](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579419452)
+passed, including the database tenant-isolation job.
+
+**Previous blocker (owner reports restored):** inspect the isolated Supabase project in the
+Supabase dashboard and restore its availability, or identify the correct
+approved isolated project if this project no longer exists. Confirm environment
+variables and secrets refer to that project. Do not substitute development
+credentials or weaken target checks. GitHub secret values were never fetched.
+
+Once the infrastructure issue is resolved, preserve/archive this deliberately
+stopped execution, commit any follow-up changes, and start a new bounded run.
+Live schema verification, browser execution and a real Codex repair remain
+unverified. Retry/repair limits and partial-download recovery have regression
+coverage; a live interrupted-dispatch recovery has not been exercised. A real
+application repair should only run if repeated hosted assertions warrant it.
+No merge or database mutation was performed.
+
+### Restored-project validation in progress
+
+The owner restored the isolated project and authorized a controlled reversible
+application defect to exercise the repair cycle. The public Auth endpoint now
+resolves and returns HTTP 401 without credentials (expected); metadata preflight
+passes against the same isolated project. The original terminal infrastructure
+execution will be archived intact before a new bounded execution, as required
+by the resume contract. No repair budget from a failed repair is being reset.
