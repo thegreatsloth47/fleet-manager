@@ -158,3 +158,14 @@ resolves and returns HTTP 401 without credentials (expected); metadata preflight
 passes against the same isolated project. The original terminal infrastructure
 execution will be archived intact before a new bounded execution, as required
 by the resume contract. No repair budget from a failed repair is being reset.
+
+Baseline hosted run [44586916099](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586916099)
+passed identity/schema preflight, browser regressions and cleanup at commit
+`95c9c14`. Same-commit CI [44586913728](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586913728)
+passed including tenant isolation. Evidence is archived privately under
+`.e2e-runs/automation-baseline-44586916099/`.
+
+Controlled repair exercise: temporarily omit the saved vehicle description from
+the edit textarea's default value. This presentation-only defect is expected to
+fail the existing reload assertion in `e2e/vehicles.spec.ts`; no tests or security
+controls are modified. The exercise must end with saved descriptions restored.

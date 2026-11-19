@@ -136,7 +136,7 @@ export default function VehicleForm({
             <textarea
               name="description"
               maxLength={4000}
-              defaultValue={vehicle?.description ?? ""}
+              defaultValue=""
             />
           </label>
         </p>
