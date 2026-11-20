@@ -99,94 +99,91 @@ Do not reset budgets to bypass a failed execution's three-attempt limit.
 
 ## Verification status — 2026-11-19 CLI validation
 
-The CLI session can access Node v24.21.0, npm 11.19.0, Git, GitHub CLI
-2.105.0 and Codex CLI 0.170.0. Codex reports ChatGPT authentication.
-GitHub keyring authentication and Git push authentication (dry run) pass with
-network sandbox escalation. No credentials were copied or changed.
+Node v24.21.0, npm 11.19.0, Git, GitHub CLI 2.105.0 and Codex CLI 0.170.0
+are accessible. Codex reports ChatGPT authentication. GitHub keyring login,
+repository push, Actions dispatch and environment metadata access work with
+network sandbox escalation. No credentials were copied, fetched from GitHub,
+or changed. The protected development project was never used for fixtures.
 
-- All 377 application tests and 10 automation regression tests pass.
-- Formatting, lint, type checking, build and Git whitespace checks pass.
-- Automation preflight passes against the configured isolated project
-  `wbiefcpcamynmduexvjk`, with both required secret names present.
-- Repository push permission and installed Codex execution flags pass preflight.
-- Hosted E2E is registered and active. The development branch is unprotected
-  and has no applicable repository rules. The environment retains its custom
-  deployment branch policy, currently with no entries; no protections changed.
-- Fixed the repository metadata API URL: a trailing slash returned HTTP 404
-  and prevented preflight. Added a regression test for endpoint construction.
-- Existing regression coverage verifies classification, retry/repair limits,
-  artifact download recovery, redaction and protected repair paths.
+### Completed checks
 
-### Hosted execution result
+- All 377 application tests and 12 automation tests pass, as do formatting,
+  lint, type checking, production build and Git whitespace checking.
+- Fixed the trailing slash in the repository metadata API endpoint that caused
+  HTTP 404, with regression coverage.
+- The restored isolated project `wbiefcpcamynmduexvjk` resolves and its public
+  Auth endpoint responds HTTP 401 without credentials, as expected.
+- Metadata preflight confirms the same isolated project and required secret
+  names. Hosted preflight verifies actual admin access and required schema.
+- [Baseline Hosted E2E 44586916099](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586916099)
+  passed preflight, browser regressions and cleanup at commit `95c9c14`.
+  [Same-commit CI 44586913728](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586913728)
+  passed, including database tenant isolation.
+- The baseline's 13 fixture-bearing manifests all report completed cleanup.
+- Existing target validation, environment restrictions, security path/diff
+  checks, unchanged retry, repair/run budgets and no-merge behavior remain.
 
-Implementation commit `a61b6f6048815ad172fa3faecc48a9f208f9c755` was pushed
-to `f/setup-environment`. The runner dispatched and correlated
-[Hosted E2E run 44579422081](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579422081)
-and verified its commit. Target confirmation passed, but the read-only hosted
-preflight failed with `Isolated E2E admin credential validation failed.`
-Browser tests and fixture creation never started. This message does not prove
-that the stored credential is invalid: a subsequent credential-free lookup
-failed to resolve the project hostname, and Google's public DNS returned
-NXDOMAIN (Status 3) for `wbiefcpcamynmduexvjk.supabase.co`.
+### Controlled repair and interruption exercise
 
-The runner classified the failure as infrastructure, downloaded failed logs and
-available artifacts into private ignored storage, and stopped with one hosted
-run and zero repair attempts. Invoking `--resume` preserved that terminal stop
-and dispatched nothing. Budgets and evidence remain intact in
-`.e2e-runs/automation/`; no execution was reset or archived.
+A reversible presentation defect was committed on the development branch:
+the vehicle edit textarea omits its saved description. Tests and security
+controls were unchanged. A formatting rejection stopped the first local
+validation before push or dispatch; that empty execution is archived intact.
 
-[Same-commit CI run 44579419452](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579419452)
-passed, including the database tenant-isolation job.
+[Hosted run 44589667486](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44589667486)
+failed only the intended description reload assertion: 12 browser tests passed,
+one failed, and the optional delivered-email test was skipped. Every one of its
+13 fixture-bearing manifests reports cleanup completed. The runner retrieved
+the failed log and private artifacts and classified the assertion correctly.
 
-**Previous blocker (owner reports restored):** inspect the isolated Supabase project in the
-Supabase dashboard and restore its availability, or identify the correct
-approved isolated project if this project no longer exists. Confirm environment
-variables and secrets refer to that project. Do not substitute development
-credentials or weaken target checks. GitHub secret values were never fetched.
-
-Once the infrastructure issue is resolved, preserve/archive this deliberately
-stopped execution, commit any follow-up changes, and start a new bounded run.
-Live schema verification, browser execution and a real Codex repair remain
-unverified. Retry/repair limits and partial-download recovery have regression
-coverage; a live interrupted-dispatch recovery has not been exercised. A real
-application repair should only run if repeated hosted assertions warrant it.
-No merge or database mutation was performed.
-
-### Restored-project validation in progress
-
-The owner restored the isolated project and authorized a controlled reversible
-application defect to exercise the repair cycle. The public Auth endpoint now
-resolves and returns HTTP 401 without credentials (expected); metadata preflight
-passes against the same isolated project. The original terminal infrastructure
-execution will be archived intact before a new bounded execution, as required
-by the resume contract. No repair budget from a failed repair is being reset.
-
-Baseline hosted run [44586916099](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586916099)
-passed identity/schema preflight, browser regressions and cleanup at commit
-`95c9c14`. Same-commit CI [44586913728](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44586913728)
-passed including tenant isolation. Evidence is archived privately under
-`.e2e-runs/automation-baseline-44586916099/`.
-
-Controlled repair exercise: temporarily omit the saved vehicle description from
-the edit textarea's default value. This presentation-only defect is expected to
-fail the existing reload assertion in `e2e/vehicles.spec.ts`; no tests or security
-controls are modified. The exercise must end with saved descriptions restored.
-
-Controlled run [44589667486](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44589667486)
-failed only the expected description reload assertion (12 passed, one optional
-email-delivery test skipped). The monitor was deliberately terminated after
-saving its run ID. Resume refused its stale lock without changing state; after
-verifying the runner and repair child were absent, only the stale lock was
-removed. Resume collected the original run and dispatched one unchanged retry,
+During that run, the local monitor was deliberately terminated after saving
+its exact run ID and correlation. Resume refused the stale lock without
+changing state. After verifying no runner or repair child was active, only the
+stale lock was removed. Resume collected the original run, then dispatched one
+unchanged retry:
 [44592020794](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44592020794).
-The retry reproduced identical diagnostics and entered repair attempt 1.
+The retry reproduced the same assertion (12 passed, one failed, one skipped),
+and the runner entered Codex repair attempt 1. No duplicate of the interrupted
+run was dispatched.
 
-Codex exited with status 1 before producing any changes. The clone has no remote,
-is clean, and matches source commit `493bf69`; no patch was applied. A no-edit
-launch with identical Codex configuration subsequently succeeded. The original
-exit reason is unknown because the runner discarded child output. This is fixed
-by retaining redacted private child logs; a regression test verifies error
-output remains private and the file has owner-only permissions. Diagnostic
-allowlisting now includes `toHaveValue`, without including assertion values.
-The `repairing` stop still requires review; its one consumed attempt and two
-hosted runs have not been reset.
+Codex exited with status 1 without changing the retained clone. The clone has
+no remote, is clean, and matches source commit `493bf69`. No patch was applied.
+A no-edit launch with identical Codex configuration subsequently succeeded;
+this does not demonstrate that a full repair can complete. The original exit
+reason is unknown because child output was discarded.
+
+Two automation defects found in the exercise were fixed in `250eb7d`:
+
+- Retain redacted Codex stdout/stderr in private `repair-N.log` files even on
+  failure, without echoing that output in reports or later prompts. Regression
+  coverage checks redaction and owner-only file permissions.
+- Include `toHaveValue` in allowlisted matcher diagnostics without including
+  expected/received values. Both real failures still normalize identically.
+
+[CI 44651686891](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44651686891)
+passed for these fixes at `250eb7d`.
+
+### Remaining review and limitations
+
+The execution remains in `repairing`, with **one of three repair attempts
+consumed and two of eight hosted runs recorded**. Neither budget was reset.
+Its state still references `493bf69`; the development branch subsequently
+received the reviewed automation fixes. The temporary application defect
+remains present pending continuation or restoration. Approval was requested
+for an explicit reviewed reconciliation and fresh validation with budgets and
+history retained; automatic replay of `repairing` remains prohibited.
+
+A successful automated application patch, local repair validation, application
+of the patch, and passing hosted retest are **not yet verified**. Actual
+interruption during dispatch, patch application or commit has not been
+exercised; those phases retain their fail-closed recovery rules. Partial
+artifact recovery and retry/repair limits have regression coverage. The
+optional delivered-email browser test was not enabled.
+
+The original unavailable-project execution
+[44579422081](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579422081)
+is preserved under `.e2e-runs/automation-infrastructure-44579422081/`.
+Baseline evidence is under `.e2e-runs/automation-baseline-44586916099/`.
+Current controlled-run evidence and the untouched first repair clone remain
+under `.e2e-runs/automation/`. All are private and ignored by Git.
+No merge, paid dependency, production access or production data change occurred.
