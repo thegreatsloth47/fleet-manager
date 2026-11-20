@@ -163,22 +163,55 @@ Two automation defects found in the exercise were fixed in `250eb7d`:
 [CI 44651686891](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44651686891)
 passed for these fixes at `250eb7d`.
 
-### Remaining review and limitations
+### Successful repair and retest
 
-The execution remains in `repairing`, with **one of three repair attempts
-consumed and two of eight hosted runs recorded**. Neither budget was reset.
-Its state still references `493bf69`; the development branch subsequently
-received the reviewed automation fixes. The temporary application defect
-remains present pending continuation or restoration. Approval was requested
-for an explicit reviewed reconciliation and fresh validation with budgets and
-history retained; automatic replay of `repairing` remains prohibited.
+The owner approved reconciliation after review of the untouched first repair
+clone. The prior state was copied privately before recording the reconciliation
+and advancing to validation at `3449a83`. Attempt 1 and both prior hosted runs
+were retained; neither budget was reset. Fresh runs
+[44653248156](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44653248156)
+and [44654411881](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44654411881)
+reproduced the same description assertion at that commit. Both runs' 13
+fixture-bearing manifests report cleanup complete.
 
-A successful automated application patch, local repair validation, application
-of the patch, and passing hosted retest are **not yet verified**. Actual
-interruption during dispatch, patch application or commit has not been
-exercised; those phases retain their fail-closed recovery rules. Partial
-artifact recovery and retry/repair limits have regression coverage. The
-optional delivered-email browser test was not enabled.
+Codex attempt 2 automatically restored
+`defaultValue={vehicle?.description ?? ""}` in the vehicle form. The runner
+accepted only that application-source patch, installed locked dependencies in
+the isolated clone, and passed formatting, lint, types, all 377 application
+tests, all 12 automation tests, and build. It applied, committed and pushed the
+repair as `bfc829ec1db29c9d689f65b7a333b0b9dcfa7bdd`.
+
+[Hosted retest 44655972236](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44655972236)
+passed browser regressions and cleanup.
+[Same-commit CI 44655969305](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44655969305)
+passed including database tenant isolation. All 13 fixture-bearing manifests
+from the passing retest report cleanup complete. The application source exactly
+matches the pre-exercise baseline: the controlled defect is fully removed.
+
+The execution finished in `done`, with **two of three repair attempts consumed
+and five of eight hosted runs retained**. A subsequent `--resume` on the repair
+commit succeeded without changing state, history or budgets, dispatched no
+additional workflow and released its lock. The final documentation commit does
+not change the completed execution's recorded repair SHA.
+
+The real Codex child diagnostic log exists with mode `0600`. The repair clone
+has no remote or ignored local environment files. Evidence, both repair clones
+and the approved reconciliation record remain private and intact.
+
+### Remaining limitations
+
+The complete failure retrieval, diagnosis, repair, local validation, commit/push
+and successful hosted retest cycle is verified with a controlled presentation
+defect. This does not prove arbitrary repairs are semantically safe; review is
+still required before any merge. The first Codex exit reason remains unknown,
+but future child failures now retain private diagnostic output.
+
+Live monitoring interruption, stale-lock refusal/recovery, the protected failed
+repair stop and completed-state resume were exercised. Actual interruption
+during dispatch, patch application or commit has not been exercised; those
+phases retain their fail-closed recovery rules. Partial artifact recovery and
+retry/repair limits have regression coverage. The optional delivered-email
+browser test was not enabled. No safeguard was relaxed to complete validation.
 
 The original unavailable-project execution
 [44579422081](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44579422081)
