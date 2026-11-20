@@ -67,6 +67,8 @@ assertions are only application-defect candidates, not certain diagnoses.
 
 State and reports are under the ignored `.e2e-runs/automation/` directory:
 `state.json`, `report.txt`, per-run logs/artifacts, and retained repair clones.
+Codex child stdout/stderr are redacted and retained as private `repair-N.log`
+files, including on failure. These logs never enter later repair prompts.
 The state file is atomically replaced after each transition. The report includes
 commit, run links, classification, repair count and outcome. Treat all evidence
 as private: downloaded artifacts may contain synthetic account data or temporary
@@ -169,3 +171,22 @@ Controlled repair exercise: temporarily omit the saved vehicle description from
 the edit textarea's default value. This presentation-only defect is expected to
 fail the existing reload assertion in `e2e/vehicles.spec.ts`; no tests or security
 controls are modified. The exercise must end with saved descriptions restored.
+
+Controlled run [44589667486](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44589667486)
+failed only the expected description reload assertion (12 passed, one optional
+email-delivery test skipped). The monitor was deliberately terminated after
+saving its run ID. Resume refused its stale lock without changing state; after
+verifying the runner and repair child were absent, only the stale lock was
+removed. Resume collected the original run and dispatched one unchanged retry,
+[44592020794](https://github.com/thegreatsloth47/fleet-manager/actions/runs/44592020794).
+The retry reproduced identical diagnostics and entered repair attempt 1.
+
+Codex exited with status 1 before producing any changes. The clone has no remote,
+is clean, and matches source commit `493bf69`; no patch was applied. A no-edit
+launch with identical Codex configuration subsequently succeeded. The original
+exit reason is unknown because the runner discarded child output. This is fixed
+by retaining redacted private child logs; a regression test verifies error
+output remains private and the file has owner-only permissions. Diagnostic
+allowlisting now includes `toHaveValue`, without including assertion values.
+The `repairing` stop still requires review; its one consumed attempt and two
+hosted runs have not been reset.

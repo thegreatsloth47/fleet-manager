@@ -214,3 +214,48 @@ test("equivalent diagnostic ordering does not imply a different failure", async 
     ),
   );
 });
+
+test("value assertion diagnostics include the matcher without expected or received data", async () => {
+  const { diagnosticsForModel } = await import("./repair.mjs");
+  assert.equal(
+    diagnosticsForModel(
+      'e2e/vehicles.spec.ts:75:29 expect(locator).toHaveValue(expected) failed\nExpected: "private-value"\nReceived: ""',
+    ),
+    "e2e/vehicles.spec.ts:75:29\ntoHaveValue",
+  );
+});
+
+test("failed child output is retained privately and redacted, never echoed in errors", async () => {
+  const { mkdtempSync, readFileSync, statSync, rmSync } =
+    await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { execute } = await import("./repair.mjs");
+  const directory = mkdtempSync(join(tmpdir(), "repair-diagnostic-"));
+  const diagnosticFile = join(directory, "child.log");
+  try {
+    assert.throws(
+      () =>
+        execute(
+          process.execPath,
+          [
+            "-e",
+            'console.log("diagnostic marker"); console.error("token=private-value"); process.exit(7)',
+          ],
+          { diagnosticFile },
+        ),
+      (error) => {
+        assert.match(error.message, /failed \(exit 7\)/);
+        assert.doesNotMatch(error.message, /diagnostic marker|private-value/);
+        return true;
+      },
+    );
+    const log = readFileSync(diagnosticFile, "utf8");
+    assert.match(log, /diagnostic marker/);
+    assert.doesNotMatch(log, /private-value/);
+    if (process.platform !== "win32")
+      assert.equal(statSync(diagnosticFile).mode & 0o777, 0o600);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

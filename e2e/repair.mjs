@@ -66,7 +66,7 @@ export function diagnosticsForModel(log) {
   return [
     ...new Set(
       log.match(
-        /e2e\/[a-zA-Z0-9_/-]+\.spec\.ts:\d+(?::\d+)?|\b(?:toBeVisible|toHaveURL|toHaveText|toContainText|toEqual|toBe|toHaveCount|toBeEnabled|toBeDisabled)\b/g,
+        /e2e\/[a-zA-Z0-9_/-]+\.spec\.ts:\d+(?::\d+)?|\b(?:toBeVisible|toHaveURL|toHaveText|toHaveValue|toContainText|toEqual|toBe|toHaveCount|toBeEnabled|toBeDisabled)\b/g,
       ) ?? [],
     ),
   ]
@@ -144,21 +144,34 @@ export function assertRepairPaths(paths, patch) {
   }
 }
 
-function execute(command, args, options = {}) {
+export function execute(command, args, options = {}) {
+  const { raw, diagnosticFile, ...processOptions } = options;
   const result = spawnSync(command, args, {
     encoding: "utf8",
     timeout: 20 * 60_000,
     maxBuffer: 32 * 1024 * 1024,
     env: safeProcessEnvironment(),
-    ...options,
+    ...processOptions,
   });
+  if (diagnosticFile) {
+    // Keep child failures reviewable without exposing their output in reports or prompts.
+    writeFileSync(
+      diagnosticFile,
+      redact(
+        [result.stdout, result.stderr, result.error?.message]
+          .filter(Boolean)
+          .join("\n"),
+      ),
+      { mode: 0o600 },
+    );
+  }
   if (result.error || result.status !== 0) {
     // Do not echo subprocess output: it may include credentials or fixture URLs.
     throw new Error(
       `${command} ${args[0] ?? ""} failed (exit ${result.status ?? "unavailable"}).`,
     );
   }
-  return options.raw ? result.stdout : result.stdout.trim();
+  return raw ? result.stdout : result.stdout.trim();
 }
 
 export async function main(args = process.argv.slice(2)) {
@@ -628,6 +641,7 @@ export async function main(args = process.argv.slice(2)) {
             cwd: checkout,
             input: prompt,
             timeout: 30 * 60_000,
+            diagnosticFile: resolve(directory, `repair-${state.repairs}.log`),
             env: { ...safeProcessEnvironment(), FLEETFALCON_REPAIR_CHILD: "1" },
           },
         );
