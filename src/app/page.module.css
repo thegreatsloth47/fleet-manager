@@ -1,0 +1,135 @@
+.landing {
+  max-width: 76rem;
+  color: #172d35;
+  padding-block: 1.25rem 3rem;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #cbd6d5;
+}
+
+.brand {
+  margin-right: auto;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.landing a {
+  color: #174b48;
+  text-underline-offset: 0.25em;
+}
+
+.landing a:focus-visible {
+  outline: 3px solid #a05700;
+  outline-offset: 5px;
+}
+
+.hero {
+  padding: clamp(2.5rem, 7vw, 6rem) 0;
+  max-width: 54rem;
+}
+
+.eyebrow {
+  color: #48635e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  font-size: clamp(2.35rem, 6vw, 4.75rem);
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+  margin: 1rem 0 1.5rem;
+  text-wrap: balance;
+}
+
+.introduction {
+  font-size: 1.25rem;
+  max-width: 36rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  margin-block: 2rem 1rem;
+}
+
+.actions .primaryAction {
+  background: #174b48;
+  color: #fff;
+  padding: 0.9rem 1.5rem;
+  border-radius: 0.4rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.note {
+  color: #48635e;
+  font-size: 0.9rem;
+}
+
+.capabilities {
+  padding-block: 2rem;
+  border-top: 1px solid #cbd6d5;
+}
+
+.landing h2 {
+  font-size: clamp(1.65rem, 3vw, 2.3rem);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cards article {
+  background: #edf3ee;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.number {
+  color: #48635e;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.gettingStarted {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+  gap: 2rem;
+  padding-block: 3rem;
+}
+
+.gettingStarted ol {
+  padding-left: 1.5rem;
+}
+
+.gettingStarted li {
+  padding: 0.5rem 0 1rem 0.5rem;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #cbd6d5;
+}

@@ -6,8 +6,8 @@
 - Phase 1 complete: blueprint sections 1–22 and Appendix A reviewed against the
   repository's routes, domain services, migrations, test coverage and
   [hosted automation contract](../e2e/AUTOMATION.md).
-- Current task: F01, public introduction through existing account entry.
-- Next task: F02, usable mobile online management journey.
+- Current task: F02, mobile online management journey. F01 implemented; hosted verification pending.
+- Next task: shared hosted verification of F01/F02, then D01 approval before F03.
 - Authority: the owner's autonomous-development request authorizes clearly
   specified safe work. It does **not** approve new migrations, permission changes,
   production deployment, paid services or a repository restructuring.
@@ -90,8 +90,8 @@ core described above is an implicit dependency. Approval IDs are defined below.
 
 | ID | End-to-end outcome / definition of done | Dependencies | Gate / status |
 | --- | --- | --- | --- |
-| F01 | Visitor understands current FleetFalcon capabilities, follows a clear signup/sign-in action and reaches the existing account flow. Responsive public page, truthful copy, descriptive metadata, keyboard navigation and browser tests. No new lead database or unshipped promises. | Existing auth flow | Ready; safe presentation scope |
-| F02 | Owner/admin completes organization → vehicle → mileage → service → dashboard on a narrow screen, with readable forms/history, usable controls and visible keyboard focus; read-only users retain their existing view. Reuse existing authorized backend and SQL; add a real mobile journey and responsive checks. | F01; existing core | Ready; no role/schema changes |
+| F01 | Visitor understands current FleetFalcon capabilities, follows a clear signup/sign-in action and reaches the existing account flow. Responsive public page, truthful copy, descriptive metadata, keyboard navigation and browser tests. No new lead database or unshipped promises. | Existing auth flow | Implemented; local checks passed; hosted pending |
+| F02 | Owner/admin completes organization → vehicle → mileage → service → dashboard on a narrow screen, with readable forms/history, usable controls and visible keyboard focus; read-only users retain their existing view. Reuse existing authorized backend and SQL; add a real mobile journey and responsive checks. | F01; existing core | In progress; no role/schema changes |
 | F03 | Owner configures enabled capabilities; disabled modules disappear from workflows/navigation and reject module-specific commands/jobs while retaining historical data under the approved access policy. | Existing core | Blocked D01; migration + security |
 | F04 | Owner invites a coworker, assigns an organization role, links a historical operator and vehicle assignment, and can revoke access without deleting history. | F03 | Blocked D02; schema + security |
 | F05 | Manager configures organization name/timezone and a member recovers account access safely; local-date scheduling remains correct and protected. | F04 | Blocked D02/D03; schema + auth |
@@ -182,3 +182,5 @@ approval gate, not permission to add paid dependencies now.
   runs consumed. Preserve/archive it intact before new feature verification.
 - F01/F02 implementation and fresh hosted results: pending. Update this checkpoint
   and feature statuses before ending or interrupting the session.
+
+- F01: implemented public introduction, shipped-capability copy, metadata and account handoff. 378 application tests, formatting, lint, type checking and build passed. Added responsive public browser test; full hosted verification pending F02.
