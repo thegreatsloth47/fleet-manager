@@ -9,7 +9,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <a className="skip-link" href="#page-content">
+          Skip to content
+        </a>
+        <div id="page-content" tabIndex={-1}>
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

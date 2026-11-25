@@ -6,40 +6,47 @@
 - Phase 1 complete: blueprint sections 1–22 and Appendix A reviewed against the
   repository's routes, domain services, migrations, test coverage and
   [hosted automation contract](../e2e/AUTOMATION.md).
-- Current task: F02, mobile online management journey. F01 implemented; hosted verification pending.
-- Next task: shared hosted verification of F01/F02, then D01 approval before F03.
-- Authority: the owner's autonomous-development request authorizes clearly
-  specified safe work. It does **not** approve new migrations, permission changes,
-  production deployment, paid services or a repository restructuring.
-- F01 and F02 are ready under that authority. All later features have explicit
-  approval gates below. No approval is implied by their order in this document.
+- Development paused at owner request; the previous open-ended implementation
+  authority is superseded. This session only preserves progress and updates this record.
+- Current branch/HEAD: `f/setup-environment` / `2fb5267`. Local commits `10735c1`
+  (audit/backlog) and `2fb5267` (F01) are ahead of the locally recorded remote;
+  no fresh remote fetch or push was performed at this checkpoint.
+- F01 is implemented and committed with local validation; hosted verification is
+  pending. F02 is partially implemented in the working tree and is not committed
+  or browser-verified. Preserve all three source/test changes listed below.
+- Next recommended bounded milestone: finish and validate the existing F02 mobile
+  online management journey, including shared hosted verification of F01/F02;
+  commit validated work on the development branch, then stop for owner review.
+  Do not start it during this preservation-only session.
+- Subsequent dependency: D01 contract/migration approval before F03. No new
+  migrations, permission changes, production deployment, paid services or
+  repository restructuring have been approved.
 - Baseline checks run this session: 377 application tests across 31 files and
   12 repair tests passed. Historical hosted evidence is in AUTOMATION.md;
   it is not a fresh validation of future changes.
 
 ## How to continue without reconstructing the conversation
 
-1. Read this checkpoint, AGENTS.md, the blueprint and AUTOMATION.md. Inspect Git
-   status and the ignored automation state before changing or repeating work.
-2. Select the first ready feature whose dependencies and approval gates are met.
-   Update this file to in progress before implementation. Complete the user
-   journey, including backend, permissions and data changes where applicable;
-   do not expose a stub to make a feature appear complete.
-3. Record decisions and evidence here. Each feature needs local formatting,
-   lint, type checking, unit/regression tests and build. Changes to persistence,
-   permissions or real browser behavior require the appropriate database and
-   hosted browser tests. Migrations require owner approval before implementation
-   or application; local/CI approval never authorizes production application.
-4. Commit on the development branch. Hosted verification uses the existing
-   runner with the explicitly confirmed isolated project and a clean checkout.
-   Preserve finished evidence before starting a new execution. Never reset a
-   stopped repair's budgets; maximum three attempts and eight hosted runs remain.
-   Two adjacent presentation features may share a full hosted regression run,
-   but neither is marked verified until that run and same-commit CI pass.
-5. Continue with the next ready feature. Stop at an unresolved failure or a
-   required approval. Record the exact next action, commit/run references and
-   remaining limitations. Do not merge or deploy. This is a resumable work record,
-   not an unattended scheduler or permission to run outside an active session.
+1. Work on **one bounded, meaningful milestone per session**, then stop for owner
+   review. Read this checkpoint and AGENTS.md, inspect Git status, and read only
+   relevant blueprint sections/source files. Do not repeat the full audit.
+2. For the next implementation session, preserve and review the existing F02 diff
+   before completing it. Use targeted tests during implementation and broader
+   validation at milestone completion. Record decisions and validation evidence.
+3. Use the existing hosted E2E automation when appropriate; inspect AUTOMATION.md
+   and ignored runner state before starting. It requires a clean committed tree
+   and the explicitly confirmed isolated project. Preserve completed evidence;
+   never reset a stopped repair's budgets (three attempts/eight hosted runs).
+   F01/F02 may share a hosted regression run, but neither is marked verified
+   until that run and same-commit CI pass.
+4. Commit validated work on the development branch. Preserve organization
+   isolation, RLS, authentication and security controls; never weaken tests.
+   Stop for unresolved failures, significant architecture, migrations requiring
+   approval or security-sensitive changes. Do not merge or deploy to production,
+   introduce paid services, or modify repair automation without demonstrated need.
+5. Persist completed/unfinished work, evidence and the next dependency-ordered
+   milestone here. Avoid repeated analysis/testing and additional agents. Stop
+   after the milestone for owner review rather than starting the next feature.
 
 ## Audit: implemented scope versus the complete V1
 
@@ -91,7 +98,7 @@ core described above is an implicit dependency. Approval IDs are defined below.
 | ID | End-to-end outcome / definition of done | Dependencies | Gate / status |
 | --- | --- | --- | --- |
 | F01 | Visitor understands current FleetFalcon capabilities, follows a clear signup/sign-in action and reaches the existing account flow. Responsive public page, truthful copy, descriptive metadata, keyboard navigation and browser tests. No new lead database or unshipped promises. | Existing auth flow | Implemented; local checks passed; hosted pending |
-| F02 | Owner/admin completes organization → vehicle → mileage → service → dashboard on a narrow screen, with readable forms/history, usable controls and visible keyboard focus; read-only users retain their existing view. Reuse existing authorized backend and SQL; add a real mobile journey and responsive checks. | F01; existing core | In progress; no role/schema changes |
+| F02 | Owner/admin completes organization → vehicle → mileage → service → dashboard on a narrow screen, with readable forms/history, usable controls and visible keyboard focus; read-only users retain their existing view. Reuse existing authorized backend and SQL; add a real mobile journey and responsive checks. | F01; existing core | Paused; partial uncommitted implementation; browser verification pending |
 | F03 | Owner configures enabled capabilities; disabled modules disappear from workflows/navigation and reject module-specific commands/jobs while retaining historical data under the approved access policy. | Existing core | Blocked D01; migration + security |
 | F04 | Owner invites a coworker, assigns an organization role, links a historical operator and vehicle assignment, and can revoke access without deleting history. | F03 | Blocked D02; schema + security |
 | F05 | Manager configures organization name/timezone and a member recovers account access safely; local-date scheduling remains correct and protected. | F04 | Blocked D02/D03; schema + auth |
@@ -180,7 +187,33 @@ approval gate, not permission to add paid dependencies now.
   delivered-email test; mobile viewport coverage will be added in F02.
 - Prior bounded repair execution is `done` at `bfc829e` with 2/3 attempts and 5/8
   runs consumed. Preserve/archive it intact before new feature verification.
-- F01/F02 implementation and fresh hosted results: pending. Update this checkpoint
-  and feature statuses before ending or interrupting the session.
 
 - F01: implemented public introduction, shipped-capability copy, metadata and account handoff. 378 application tests, formatting, lint, type checking and build passed. Added responsive public browser test; full hosted verification pending F02.
+
+### Preservation checkpoint — 2026-11-24
+
+- Owner superseded open-ended development with one milestone per session. No
+  feature implementation or validation was continued during this checkpoint.
+- Committed: `10735c1` contains the completed audit and dependency-ordered backlog;
+  `2fb5267` contains F01 public introduction, metadata, account-entry links and
+  unit/browser coverage. Both remain local relative to the recorded remote.
+- Uncommitted F02 files preserved unchanged:
+  - `src/app/globals.css`: responsive forms, touch targets and focus styling.
+  - `src/app/layout.tsx`: skip-to-content link and focus target.
+  - `e2e/presentation.spec.ts`: mobile owner maintenance/service journey,
+    read-only authorization assertions and keyboard skip-link coverage.
+- Previous session observed formatting, lint, type checking, 378 application tests
+  and 12 repair tests passing. Build compiled and passed type checks, but final
+  build completion was not captured; the old execution session is no longer
+  available. A later CSS selector adjustment is not covered by those results.
+  Do not treat this working tree as fully validated.
+- Still unfinished: review/format the final diff, local visual/browser checks,
+  completion validation, hosted F01/F02 regression and same-commit CI, followed by
+  a validated F02 commit. No new hosted execution was started in this checkpoint.
+- This backlog update is also uncommitted. No source work was discarded, reset,
+  overwritten, committed or pushed during preservation.
+- Next milestone is F02 completion/verification only; stop afterward for review.
+  It reuses existing backend/security and needs no new architectural decision
+  within that scope. F03 remains gated by D01: capability keys/dependencies,
+  defaults/backfill, disabled-feature history policy and migration approval.
+  Later D02–D14 remain unapproved and need not be decided for F02.
